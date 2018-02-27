@@ -2,8 +2,8 @@ OBJECT Page 50 Purchase Order
 {
   OBJECT-PROPERTIES
   {
-    Date=22/09/17;
-    Time=07:13:09;
+    Date=15/12/17;
+    Time=15:42:36;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TC1.0,TA1.0;
   }
@@ -118,9 +118,10 @@ OBJECT Page 50 Purchase Order
                       ToolTipML=[ENU=View a list of the records that are waiting to be approved. For example, you can see who requested the record to be approved, when it was sent, and when it is due to be approved.;
                                  ENG=View a list of the records that are waiting to be approved. For example, you can see who requested the record to be approved, when it was sent, and when it is due to be approved.];
                       ApplicationArea=#Suite;
+                      Promoted=Yes;
                       Image=Approvals;
                       OnAction=VAR
-                                 ApprovalEntries@1001 : Page 658;
+                                 ApprovalEntries@1001 : Page 81022;
                                BEGIN
                                  ApprovalEntries.Setfilters(DATABASE::"Purchase Header","Document Type","No.");
                                  ApprovalEntries.RUN;
@@ -577,6 +578,7 @@ OBJECT Page 50 Purchase Order
                                  ENG=Send A&pproval Request];
                       ApplicationArea=#Suite;
                       Promoted=Yes;
+                      Visible=false;
                       Enabled=NOT OpenApprovalEntriesExist;
                       PromotedIsBig=Yes;
                       Image=SendApprovalRequest;
@@ -597,6 +599,7 @@ OBJECT Page 50 Purchase Order
                                  ENG=Cancel the approval request.];
                       ApplicationArea=#Suite;
                       Promoted=Yes;
+                      Visible=false;
                       Enabled=CanCancelApprovalForRecord;
                       PromotedIsBig=Yes;
                       Image=CancelApprovalRequest;
@@ -606,6 +609,42 @@ OBJECT Page 50 Purchase Order
                                  ApprovalsMgmt@1001 : Codeunit 1535;
                                BEGIN
                                  ApprovalsMgmt.OnCancelPurchaseApprovalRequest(Rec);
+                               END;
+                                }
+      { 1000000007;2 ;Action    ;
+                      CaptionML=[ENU=Send A&pproval Request;
+                                 CYM=Anfon Cais am Gymeradwyaeth;
+                                 ENG=Send A&pproval Request];
+                      Promoted=Yes;
+                      Enabled=NOT OpenApprovalEntriesExist;
+                      PromotedIsBig=Yes;
+                      Image=SendApprovalRequest;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 ApprovalMgt@1001 : Codeunit 1535;
+                                 LcduAppFunct@1000000001 : Codeunit 81000;
+                                 LtxtError@1000000000 : Text;
+                               BEGIN
+                                 //IF ApprovalMgt.SendPurchaseApprovalRequest(Rec) THEN CurrPage.CLOSE;
+                                 IF NOT LcduAppFunct.SubmitForApproval("Document Type","No.",LtxtError) THEN ERROR(LtxtError);
+                                 CurrPage.CLOSE;
+                               END;
+                                }
+      { 1000000006;2 ;Action    ;
+                      CaptionML=[ENU=Cancel Approval Re&quest;
+                                 ENG=Cancel Approval Re&quest];
+                      Promoted=Yes;
+                      Enabled=CanCancelApprovalForRecord;
+                      PromotedIsBig=Yes;
+                      Image=Cancel;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 ApprovalMgt@1001 : Codeunit 1535;
+                                 LcduAppFunct@1000000001 : Codeunit 81000;
+                                 LtxtError@1000000000 : Text;
+                               BEGIN
+                                 //IF ApprovalMgt.CancelPurchaseApprovalRequest(Rec,TRUE,TRUE) THEN;
+                                 IF LcduAppFunct.CancelDocument(Rec,TRUE) THEN CurrPage.CLOSE;
                                END;
                                 }
       { 17      ;1   ;ActionGroup;

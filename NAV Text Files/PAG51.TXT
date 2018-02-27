@@ -2,8 +2,8 @@ OBJECT Page 51 Purchase Invoice
 {
   OBJECT-PROPERTIES
   {
-    Date=03/10/17;
-    Time=16:37:08;
+    Date=26/10/17;
+    Time=11:18:12;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -39,16 +39,21 @@ OBJECT Page 51 Purchase Invoice
                  END;
                END;
 
-    OnNewRecord=BEGIN
-                  "Responsibility Center" := UserMgt.GetPurchasesFilter;
+    OnAfterGetRecord=BEGIN
+                       IF Status = Status::Released THEN StatusReleased := TRUE
+                         ELSE StatusReleased := FALSE;
+                     END;
 
-                  IF (NOT DocNoVisible) AND ("No." = '') THEN
-                    SetBuyFromVendorFromFilter;
+    OnNewRecord=BEGIN
+                       "Responsibility Center" := UserMgt.GetPurchasesFilter;
+
+                       IF (NOT DocNoVisible) AND ("No." = '') THEN
+                       SetBuyFromVendorFromFilter;
                 END;
 
     OnDeleteRecord=BEGIN
-                     CurrPage.SAVERECORD;
-                     EXIT(ConfirmDeletion);
+                       CurrPage.SAVERECORD;
+                       EXIT(ConfirmDeletion);
                    END;
 
     OnQueryClosePage=BEGIN
@@ -494,6 +499,7 @@ OBJECT Page 51 Purchase Invoice
                                  ENG=Finalise the document or journal by posting the amounts and quantities to the related accounts in your company books.];
                       ApplicationArea=#Basic,#Suite;
                       Promoted=Yes;
+                      Visible=StatusReleased;
                       PromotedIsBig=Yes;
                       Image=PostOrder;
                       PromotedCategory=Process;
@@ -535,7 +541,7 @@ OBJECT Page 51 Purchase Invoice
                       CaptionML=[ENU=Post and &Print;
                                  ENG=Post and &Print];
                       Promoted=Yes;
-                      Visible=NOT IsOfficeAddin;
+                      Visible=StatusReleased;
                       PromotedIsBig=Yes;
                       Image=PostPrint;
                       PromotedCategory=Process;
@@ -549,6 +555,7 @@ OBJECT Page 51 Purchase Invoice
                       Ellipsis=Yes;
                       CaptionML=[ENU=Post &Batch;
                                  ENG=Post &Batch];
+                      Visible=StatusReleased;
                       Image=PostBatch;
                       OnAction=BEGIN
                                  VerifyTotal;
@@ -608,7 +615,15 @@ OBJECT Page 51 Purchase Invoice
                              END;
                               }
 
-    { 6   ;2   ;Field     ;
+    { 1000000007;2;Field  ;
+                SourceExpr="Buy-from Vendor No." }
+
+    { 51  ;2   ;Group     ;
+                CaptionML=[ENU=Buy-from;
+                           ENG=Buy-from];
+                GroupType=Group }
+
+    { 6   ;3   ;Field     ;
                 CaptionML=[ENU=Vendor;
                            ENG=Vendor];
                 ToolTipML=[ENU=Specifies the name of the vendor who sends the items. The field is filled automatically when you fill the Buy-from Vendor No. field.;
@@ -631,11 +646,6 @@ OBJECT Page 51 Purchase Invoice
                            END;
 
                 ShowMandatory=TRUE }
-
-    { 51  ;2   ;Group     ;
-                CaptionML=[ENU=Buy-from;
-                           ENG=Buy-from];
-                GroupType=Group }
 
     { 72  ;3   ;Field     ;
                 CaptionML=[ENU=Address;
@@ -733,6 +743,7 @@ OBJECT Page 51 Purchase Invoice
                 ApplicationArea=#Suite;
                 SourceExpr="Purchaser Code";
                 Importance=Additional;
+                Visible=FALSE;
                 OnValidate=BEGIN
                              PurchaserCodeOnAfterValidate;
                            END;
@@ -742,13 +753,15 @@ OBJECT Page 51 Purchase Invoice
                 ToolTipML=[ENU=Specifies the campaign number the document is linked to.;
                            ENG=Specifies the campaign number the document is linked to.];
                 SourceExpr="Campaign No.";
-                Importance=Additional }
+                Importance=Additional;
+                Visible=FALSE }
 
     { 115 ;2   ;Field     ;
                 ToolTipML=[ENU=Specifies the code of the responsibility center that is associated with the user, company, or vendor.;
                            ENG=Specifies the code of the responsibility centre that is associated with the user, company, or vendor.];
                 SourceExpr="Responsibility Center";
-                Importance=Additional }
+                Importance=Additional;
+                Visible=FALSE }
 
     { 65  ;2   ;Field     ;
                 ToolTipML=[ENU=Specifies the ID of the user who is responsible for the document.;
@@ -1222,6 +1235,7 @@ OBJECT Page 51 Purchase Invoice
       CreateIncomingDocFromEmailAttachment@1018 : Boolean;
       TotalsMismatchErr@1019 : TextConst 'ENU=The invoice cannot be posted because the total is different from the total on the related incoming document.;ENG=The invoice cannot be posted because the total is different from the total on the related incoming document.';
       IncomingDocEmailAttachmentEnabled@1020 : Boolean;
+      StatusReleased@1000000000 : Boolean;
 
     PROCEDURE LineModified@7();
     BEGIN

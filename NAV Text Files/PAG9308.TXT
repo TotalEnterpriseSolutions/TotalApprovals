@@ -2,8 +2,8 @@ OBJECT Page 9308 Purchase Invoices
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=13:37:40;
+    Date=18/10/17;
+    Time=17:02:04;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,TA1.0;
   }
@@ -29,6 +29,11 @@ OBJECT Page 9308 Purchase Invoices
 
                  CopyBuyFromVendorFilter;
                END;
+
+    OnAfterGetRecord=BEGIN
+                       IF Status = Status::Released THEN StatusReleased := TRUE
+                         ELSE StatusReleased := FALSE;
+                     END;
 
     OnAfterGetCurrRecord=BEGIN
                            SetControlAppearance;
@@ -205,6 +210,7 @@ OBJECT Page 9308 Purchase Invoices
                                  ENG=Finalise the document or journal by posting the amounts and quantities to the related accounts in your company books.];
                       ApplicationArea=#Basic,#Suite;
                       Promoted=Yes;
+                      Visible=StatusReleased;
                       PromotedIsBig=Yes;
                       Image=PostOrder;
                       PromotedCategory=Process;
@@ -249,6 +255,7 @@ OBJECT Page 9308 Purchase Invoices
                       CaptionML=[ENU=Post and &Print;
                                  ENG=Post and &Print];
                       Promoted=Yes;
+                      Visible=StatusReleased;
                       PromotedIsBig=Yes;
                       Image=PostPrint;
                       PromotedCategory=Process;
@@ -263,6 +270,7 @@ OBJECT Page 9308 Purchase Invoices
                       CaptionML=[ENU=Post &Batch;
                                  ENG=Post &Batch];
                       Promoted=Yes;
+                      Visible=StatusReleased;
                       Image=PostBatch;
                       PromotedCategory=Process;
                       OnAction=BEGIN
@@ -323,6 +331,9 @@ OBJECT Page 9308 Purchase Invoices
                            ENG=Specifies the compensation agreement identification number, sometimes referred to as the RMA No. (Returns Materials Authorisation).];
                 SourceExpr="Vendor Authorization No.";
                 Visible=FALSE }
+
+    { 1000000003;2;Field  ;
+                SourceExpr="Purchase Order No." }
 
     { 27  ;2   ;Field     ;
                 ToolTipML=[ENU=Specifies the postal code of the address.;
@@ -537,6 +548,7 @@ OBJECT Page 9308 Purchase Invoices
       OpenPostedPurchaseInvQst@1005 : TextConst 'ENU=The invoice has been posted and moved to the Posted Purchase Invoice list.\\Do you want to open the posted invoice?;ENG=The invoice has been posted and moved to the Posted Purchase Invoice list.\\Do you want to open the posted invoice?';
       CanCancelApprovalForRecord@1003 : Boolean;
       TotalsMismatchErr@1000 : TextConst 'ENU=The invoice cannot be posted because the total is different from the total on the related incoming document.;ENG=The invoice cannot be posted because the total is different from the total on the related incoming document.';
+      StatusReleased@1000000000 : Boolean;
 
     LOCAL PROCEDURE SetControlAppearance@5();
     VAR

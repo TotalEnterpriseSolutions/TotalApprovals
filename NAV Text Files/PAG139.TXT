@@ -2,9 +2,8 @@ OBJECT Page 139 Posted Purch. Invoice Subform
 {
   OBJECT-PROPERTIES
   {
-    Date=25/10/17;
-    Time=13:17:30;
-    Modified=Yes;
+    Date=25/10/16;
+    Time=12:00:00;
     Version List=NAVW110.00,TA1.0;
   }
   PROPERTIES
@@ -178,9 +177,6 @@ OBJECT Page 139 Posted Purch. Invoice Subform
                            ENG=Specifies the price, in LCY, for one unit of the item.];
                 ApplicationArea=#Basic,#Suite;
                 SourceExpr="Unit Price (LCY)" }
-
-    { 1000000000;2;Field  ;
-                SourceExpr="VAT Prod. Posting Group" }
 
     { 64  ;2   ;Field     ;
                 ToolTipML=[ENU=Specifies the net amount (before subtracting the invoice discount amount) that must be paid for the items on the line.;

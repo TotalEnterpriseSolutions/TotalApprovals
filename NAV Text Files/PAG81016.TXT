@@ -2,8 +2,8 @@ OBJECT Page 81016 TA Purchase Order List
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=13:55:00;
+    Date=19/10/17;
+    Time=10:57:30;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -107,9 +107,6 @@ OBJECT Page 81016 TA Purchase Order List
     { 1   ;1   ;Group     ;
                 GroupType=Repeater }
 
-    { 1102601001;2;Field  ;
-                SourceExpr="Document Date" }
-
     { 1000000000;2;Field  ;
                 CaptionML=[CYM=Rhif heb ei Chymeradwyo;
                            ENG=Unapproved No.];
@@ -122,6 +119,9 @@ OBJECT Page 81016 TA Purchase Order List
                 Visible=GbooApproved;
                 Style=Favorable;
                 StyleExpr=TRUE }
+
+    { 1102601001;2;Field  ;
+                SourceExpr="Document Date" }
 
     { 1000000005;2;Field  ;
                 SourceExpr="Document Type" }

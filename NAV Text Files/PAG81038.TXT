@@ -2,8 +2,8 @@ OBJECT Page 81038 TA Account Manager
 {
   OBJECT-PROPERTIES
   {
-    Date=01/09/17;
-    Time=11:32:35;
+    Date=06/11/17;
+    Time=10:19:24;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -25,6 +25,10 @@ OBJECT Page 81038 TA Account Manager
                 CaptionML=[ENU=Total Approvals Overview;
                            ENG=Total Approvals Overview];
                 PagePartID=Page81037;
+                PartType=Page }
+
+    { 1000000005;2;Part   ;
+                PagePartID=Page6086302;
                 PartType=Page }
 
     { 1000000003;1;Group  ;

@@ -2,8 +2,8 @@ OBJECT Codeunit 91 Purch.-Post (Yes/No)
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=11:29:43;
+    Date=21/12/17;
+    Time=12:03:25;
     Modified=Yes;
     Version List=NAVW110.00,TA1.0;
   }
@@ -39,6 +39,7 @@ OBJECT Codeunit 91 Purch.-Post (Yes/No)
       DocumentType@1000000000 : Record 81001;
       SureReceiveOrder@1000000001 : TextConst 'ENU=Are you sure you want to receive lines on this order?';
       ErrorReceiving@1000000002 : TextConst 'ENU=This document type does not allow the person responsible for the document to receive the goods.  Please find an alternate user to receive the goods on this order.';
+      DocumentDate@1000000003 : Date;
     BEGIN
       WITH PurchaseHeader DO BEGIN
         CASE "Document Type" OF
@@ -52,6 +53,11 @@ OBJECT Codeunit 91 Purch.-Post (Yes/No)
               Invoice := Selection IN [2,3];}
               IF (DocumentType.GET(PurchaseHeader."Procurement Workflow")) AND (DocumentType."Raised By can't Receive") AND ("Person Responsible" = USERID) THEN ERROR(ErrorReceiving);
               IF NOT CONFIRM(SureReceiveOrder) THEN EXIT;
+              // TES001 -
+              DocumentDate := "Document Date";
+              VALIDATE("Posting Date",TODAY);
+              VALIDATE("Document Date",DocumentDate);
+              // TES001 +
               Invoice := FALSE;
               Receive := TRUE;
               // TA1.0 - END
@@ -103,6 +109,10 @@ OBJECT Codeunit 91 Purch.-Post (Yes/No)
     END;
 
     BEGIN
+    {
+      001  TES-JH  21/12/2017  Users receiving Posting Date not within allowed range when receiving.
+           Added code to store the <Document Date> in <DocumentDate>, validate the <Posting Date> to today and then validate the <Document Date> to the <DocumentDate>.
+    }
     END.
   }
 }

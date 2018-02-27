@@ -2,8 +2,8 @@ OBJECT Page 81003 Web Actions
 {
   OBJECT-PROPERTIES
   {
-    Date=01/09/17;
-    Time=09:30:49;
+    Date=19/10/17;
+    Time=09:48:06;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -54,6 +54,7 @@ OBJECT Page 81003 Web Actions
                                             }
                   { 1000000002;  ;Action    ;
                                   Name=Reports;
+                                  Visible=false;
                                   OnAction=VAR
                                              TotalApprovalSetup@1000000000 : Record 81000;
                                              NoURLSet@1000000001 : TextConst 'ENU=No URL has been specified within Total Approvals Setup;ENG=No URL has been specified within Total Approvals Setup';

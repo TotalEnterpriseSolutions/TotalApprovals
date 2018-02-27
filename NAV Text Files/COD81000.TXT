@@ -2,8 +2,8 @@ OBJECT Codeunit 81000 Total Approval Functions
 {
   OBJECT-PROPERTIES
   {
-    Date=25/10/17;
-    Time=13:57:29;
+    Date=23/11/17;
+    Time=11:13:38;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -568,37 +568,47 @@ OBJECT Codeunit 81000 Total Approval Functions
       StandardText.DELETEALL;
 
       IF ApprovalsBuffer.FINDSET(FALSE) THEN REPEAT
-          IF DocumentType."Approval Value" = DocumentType."Approval Value"::Gross THEN
-            ApprovalValue :=ApprovalsBuffer."Value Inc. VAT"
-          ELSE
-            ApprovalValue := ApprovalsBuffer."Value Ex. VAT";
-          //check which Approval workflows apply
+        IF DocumentType."Approval Value" = DocumentType."Approval Value"::Gross THEN
+          ApprovalValue :=ApprovalsBuffer."Value Inc. VAT"
+        ELSE
+          ApprovalValue := ApprovalsBuffer."Value Ex. VAT";
+        //check which Approval workflows apply
+        TotalApprovalWorflow.RESET;
+        TotalApprovalWorflow.SETRANGE(Code,DocumentType."Procurement Workflow");
+        IF NOT TotalApprovalWorflow."No Range Applies" THEN TotalApprovalWorflow.SETFILTER("Value From",'<=%1',ApprovalValue);
+        IF NOT TotalApprovalWorflow."No Range Applies" THEN TotalApprovalWorflow.SETFILTER("Value To",'>=%1',ApprovalValue);
+
+        IF TotalApprovalWorflow.FINDSET(FALSE) THEN BEGIN
+          REPEAT
+            //Create the ALE
+            IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+          UNTIL TotalApprovalWorflow.NEXT =0;
+        END;
+
+        ///Test for approvers & escalate if required/permitted
+        ApprovalEntry.RESET;
+        Sequence := TotalApprovalWorflow.Sequence;
+        ApprovalEntry.SETRANGE("Sequence No.",TotalApprovalWorflow.Sequence);
+        {IF NOT ApprovalEntry.FINDFIRST THEN BEGIN//ERROR('No Approvers founds!');
+          Sequence += 1;
           TotalApprovalWorflow.RESET;
           TotalApprovalWorflow.SETRANGE(Code,DocumentType."Procurement Workflow");
-          IF NOT TotalApprovalWorflow."No Range Applies" THEN TotalApprovalWorflow.SETFILTER("Value From",'<=%1',ApprovalValue);
-          IF NOT TotalApprovalWorflow."No Range Applies" THEN TotalApprovalWorflow.SETFILTER("Value To",'>=%1',ApprovalValue);
-
-          IF TotalApprovalWorflow.FINDSET(FALSE) THEN BEGIN
-            REPEAT
-              //Create the ALE
-              IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN EXIT(FALSE);
-            UNTIL TotalApprovalWorflow.NEXT =0;
-          END;
-
-          //Test for approvers & escalate if required/permitted
-          ApprovalEntry.RESET;
-          Sequence := TotalApprovalWorflow.Sequence;
-          ApprovalEntry.SETRANGE("Sequence No.",TotalApprovalWorflow.Sequence);
-          IF NOT ApprovalEntry.FINDFIRST THEN BEGIN//ERROR('No Approvers founds!');
+          TotalApprovalWorflow.SETRANGE(Sequence,Sequence);
+          IF TotalApprovalWorflow.FINDFIRST THEN REPEAT
+            //Create the ALE
+            IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+          UNTIL (TotalApprovalWorflow.NEXT = 0) OR (ApprovalEntry.COUNT > 0);
+        END;}
+          IF NOT ApprovalEntry.FINDFIRST THEN REPEAT
             Sequence += 1;
             TotalApprovalWorflow.RESET;
             TotalApprovalWorflow.SETRANGE(Code,DocumentType."Procurement Workflow");
             TotalApprovalWorflow.SETRANGE(Sequence,Sequence);
-            IF TotalApprovalWorflow.FINDFIRST THEN REPEAT
+            IF TotalApprovalWorflow.FINDFIRST THEN BEGIN
               //Create the ALE
-              IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN EXIT(FALSE);
-            UNTIL (TotalApprovalWorflow.NEXT = 0) OR (ApprovalEntry.COUNT > 0);
-          END;
+              IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN ;
+            END;
+        UNTIL (Sequence = 99) OR (ApprovalEntry.COUNT > 0);
         //Build List Of Batches
         StandardText.INIT;
         StandardText.Code := ApprovalsBuffer."Batch No.";
@@ -979,7 +989,7 @@ OBJECT Codeunit 81000 Total Approval Functions
           MODIFY(TRUE);
         END;
         IF ShowMessage THEN
-          MESSAGE(LtxtConst002,PurchaseHeader."Document Type",PurchaseHeader."No.");
+          MESSAGE(LtxtConst002,PurchaseHeader."Document Type",PurchaseHeader."Unapproved No.");
         EXIT(TRUE);
       END
       ELSE
@@ -2025,6 +2035,19 @@ OBJECT Codeunit 81000 Total Approval Functions
           END;
         END;
       END ELSE BEGIN
+      END;
+    END;
+
+    PROCEDURE GetPortalURL@1000000045(URLINdex@1000000000 : Integer) : Text;
+    VAR
+      TotalApprovalSetup@1000000001 : Record 81000;
+      ExpAppLink@1000000002 : TextConst 'ENU="https://finance.cxk.org/DynamicsNAV100/WebClient/?profile=TAWEB"';
+    BEGIN
+      TotalApprovalSetup.FINDFIRST;
+      CASE URLINdex OF
+        0: EXIT(TotalApprovalSetup."Web Address");
+        1: EXIT(ExpAppLink);
+        ELSE EXIT(TotalApprovalSetup."Web Address");
       END;
     END;
 

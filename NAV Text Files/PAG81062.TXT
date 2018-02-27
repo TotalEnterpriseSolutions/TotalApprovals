@@ -2,8 +2,8 @@ OBJECT Page 81062 Actual Vs Budget Factpane
 {
   OBJECT-PROPERTIES
   {
-    Date=10/10/17;
-    Time=10:16:32;
+    Date=01/12/17;
+    Time=14:46:33;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -63,7 +63,7 @@ OBJECT Page 81062 Actual Vs Budget Factpane
                            ENG=Actual Amount];
                 SourceExpr=GdecActualAmount;
                 OnDrillDown=BEGIN
-                              GdecActualAmount := GcduPortalFns.GetActualAmount(GrecPOHeader."Procurement Workflow","Dimension Set ID",GcodGLAccount,TRUE);
+                              //GdecActualAmount := GcduPortalFns.GetActualAmount(GrecPOHeader."Procurement Workflow","Dimension Set ID",GcodGLAccount,TRUE);
                             END;
                              }
 
@@ -74,7 +74,7 @@ OBJECT Page 81062 Actual Vs Budget Factpane
                            ENG=Committed Amount];
                 SourceExpr=GdecCommittedAmount;
                 OnDrillDown=BEGIN
-                              GdecCommittedAmount := GcduPortalFns.GetCommitmentAmount(GrecPOHeader."Procurement Workflow","Dimension Set ID",GcodGLAccount,TRUE);
+                              //GdecCommittedAmount := GcduPortalFns.GetCommitmentAmount(GrecPOHeader."Procurement Workflow","Dimension Set ID",GcodGLAccount,TRUE);
                             END;
                              }
 

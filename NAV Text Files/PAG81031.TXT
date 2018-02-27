@@ -2,8 +2,8 @@ OBJECT Page 81031 Procurement Workflow List
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=15:27:47;
+    Date=21/09/17;
+    Time=18:43:39;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -46,7 +46,8 @@ OBJECT Page 81031 Procurement Workflow List
     { 1000000002;2;Field  ;
                 Lookup=No;
                 DrillDown=No;
-                CaptionML=;
+                CaptionML=[ENU=Procurement Workflow;
+                           ENG=Procurement Workflow];
                 SourceExpr="Procurement Workflow" }
 
     { 1000000003;2;Field  ;

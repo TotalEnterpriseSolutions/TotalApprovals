@@ -2,8 +2,8 @@ OBJECT Page 81014 TA Purchase Order
 {
   OBJECT-PROPERTIES
   {
-    Date=11/10/17;
-    Time=16:35:13;
+    Date=27/11/17;
+    Time=16:29:26;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -625,7 +625,7 @@ OBJECT Page 81014 TA Purchase Order
                       CaptionML=[ENU=Complete Order;
                                  ENG=Complete Order];
                       Promoted=Yes;
-                      Visible=GbooPost;
+                      Visible=ShowCompleted;
                       PromotedIsBig=Yes;
                       Image=ReleaseDoc;
                       PromotedCategory=Process;
@@ -1255,6 +1255,7 @@ OBJECT Page 81014 TA Purchase Order
       GD2Caption@1000000020 : Text;
       ShowWithTypeOfSupply@1000000021 : Boolean;
       ShowWithoutTypeOfSupply@1000000022 : Boolean;
+      ShowCompleted@1000000023 : Boolean;
 
     LOCAL PROCEDURE Post@4(PostingCodeunitID@1000 : Integer);
     BEGIN
@@ -1397,6 +1398,10 @@ OBJECT Page 81014 TA Purchase Order
           GbooApproved:= TRUE;
           GbooSubmitted := TRUE;
           GbooEditable := TRUE;
+          //TES JL/JKW 23/11/2017
+          IF CURRENTCLIENTTYPE = CLIENTTYPE::Windows THEN ShowCompleted := TRUE;
+          //TES JL/JKW 23/11/2017
+
          END;
         Status::"Pending Approval":
           BEGIN

@@ -2,8 +2,8 @@ OBJECT Page 9307 Purchase Order List
 {
   OBJECT-PROPERTIES
   {
-    Date=22/09/17;
-    Time=12:25:14;
+    Date=21/12/17;
+    Time=12:18:45;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,TC1.0,TA1.0;
   }
@@ -93,9 +93,10 @@ OBJECT Page 9307 Purchase Order List
                       ToolTipML=[ENU=View a list of the records that are waiting to be approved. For example, you can see who requested the record to be approved, when it was sent, and when it is due to be approved.;
                                  ENG=View a list of the records that are waiting to be approved. For example, you can see who requested the record to be approved, when it was sent, and when it is due to be approved.];
                       ApplicationArea=#Suite;
+                      PromotedIsBig=Yes;
                       Image=Approvals;
                       OnAction=VAR
-                                 ApprovalEntries@1001 : Page 658;
+                                 ApprovalEntries@1001 : Page 81022;
                                BEGIN
                                  ApprovalEntries.Setfilters(DATABASE::"Purchase Header","Document Type","No.");
                                  ApprovalEntries.RUN;
@@ -318,7 +319,7 @@ OBJECT Page 9307 Purchase Order List
       { 19      ;1   ;ActionGroup;
                       CaptionML=[ENU=Request Approval;
                                  ENG=Request Approval] }
-      { 1102601018;2 ;Action    ;
+      { 1000000013;2 ;Action    ;
                       Name=SendApprovalRequest;
                       CaptionML=[ENU=Send A&pproval Request;
                                  ENG=Send A&pproval Request];
@@ -326,6 +327,7 @@ OBJECT Page 9307 Purchase Order List
                                  ENG=Send an approval request.];
                       ApplicationArea=#Suite;
                       Promoted=Yes;
+                      Visible=false;
                       Enabled=NOT OpenApprovalEntriesExist;
                       PromotedIsBig=Yes;
                       Image=SendApprovalRequest;
@@ -338,7 +340,7 @@ OBJECT Page 9307 Purchase Order List
                                    ApprovalsMgmt.OnSendPurchaseDocForApproval(Rec);
                                END;
                                 }
-      { 1102601019;2 ;Action    ;
+      { 1000000012;2 ;Action    ;
                       Name=CancelApprovalRequest;
                       CaptionML=[ENU=Cancel Approval Re&quest;
                                  ENG=Cancel Approval Re&quest];
@@ -346,6 +348,7 @@ OBJECT Page 9307 Purchase Order List
                                  ENG=Cancel the approval request.];
                       ApplicationArea=#Suite;
                       Promoted=Yes;
+                      Visible=false;
                       Enabled=CanCancelApprovalForRecord;
                       PromotedIsBig=Yes;
                       Image=CancelApprovalRequest;
@@ -355,6 +358,42 @@ OBJECT Page 9307 Purchase Order List
                                  ApprovalsMgmt@1001 : Codeunit 1535;
                                BEGIN
                                  ApprovalsMgmt.OnCancelPurchaseApprovalRequest(Rec);
+                               END;
+                                }
+      { 1000000011;2 ;Action    ;
+                      CaptionML=[ENU=Send A&pproval Request;
+                                 CYM=Anfon Cais am Gymeradwyaeth;
+                                 ENG=Send A&pproval Request];
+                      Promoted=Yes;
+                      Enabled=NOT OpenApprovalEntriesExist;
+                      PromotedIsBig=Yes;
+                      Image=SendApprovalRequest;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 ApprovalMgt@1001 : Codeunit 1535;
+                                 LcduAppFunct@1000000001 : Codeunit 81000;
+                                 LtxtError@1000000000 : Text;
+                               BEGIN
+                                 //IF ApprovalMgt.SendPurchaseApprovalRequest(Rec) THEN CurrPage.CLOSE;
+                                 IF NOT LcduAppFunct.SubmitForApproval("Document Type","No.",LtxtError) THEN ERROR(LtxtError);
+                                 CurrPage.CLOSE;
+                               END;
+                                }
+      { 1000000010;2 ;Action    ;
+                      CaptionML=[ENU=Cancel Approval Re&quest;
+                                 ENG=Cancel Approval Re&quest];
+                      Promoted=Yes;
+                      Enabled=CanCancelApprovalForRecord;
+                      PromotedIsBig=Yes;
+                      Image=Cancel;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 ApprovalMgt@1001 : Codeunit 1535;
+                                 LcduAppFunct@1000000001 : Codeunit 81000;
+                                 LtxtError@1000000000 : Text;
+                               BEGIN
+                                 //IF ApprovalMgt.CancelPurchaseApprovalRequest(Rec,TRUE,TRUE) THEN;
+                                 IF LcduAppFunct.CancelDocument(Rec,TRUE) THEN CurrPage.CLOSE;
                                END;
                                 }
       { 12      ;1   ;ActionGroup;
@@ -705,7 +744,7 @@ OBJECT Page 9307 Purchase Order List
     { 1000000004;2;Field  ;
                 SourceExpr="Amount Received" }
 
-    { 1000000009;2;Field  ;
+    { 1000000005;2;Field  ;
                 SourceExpr="Amount Invoiced" }
 
     { 1000000006;2;Field  ;

@@ -2,8 +2,8 @@ OBJECT Page 81004 Web Approvals
 {
   OBJECT-PROPERTIES
   {
-    Date=30/08/17;
-    Time=11:30:08;
+    Date=30/11/17;
+    Time=14:41:20;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -14,6 +14,10 @@ OBJECT Page 81004 Web Approvals
     OnOpenPage=BEGIN
                  SETFILTER("User ID Filter",USERID);
                END;
+
+    OnAfterGetRecord=BEGIN
+                       CALCFIELDS("Expenses - Pending");
+                     END;
 
   }
   CONTROLS
@@ -28,8 +32,8 @@ OBJECT Page 81004 Web Approvals
                 GroupType=CueGroup }
 
     { 1000000003;2;Field  ;
-                CaptionML=[ENU=Requests to Approve;
-                           ENG=Requests to Approve];
+                CaptionML=[ENU=Purchase Order Requests to Approve;
+                           ENG=Purchase Order Requests to Approve];
                 SourceExpr="Requests to Approve";
                 DrillDownPageID=TA Admin Approval Entries;
                 StyleExpr=TRUE }
@@ -39,6 +43,29 @@ OBJECT Page 81004 Web Approvals
                 Visible=false;
                 LookupPageID=TA Approval Requests;
                 DrillDownPageID=TA Approval Requests }
+
+    { 1000000006;1;Group  ;
+                Name=Actions;
+                CaptionML=[ENU=Expense Claims;
+                           ENG=Expense Claims];
+                GroupType=CueGroup;
+                ActionList=ACTIONS
+                {
+                  { 1000000005;  ;Action    ;
+                                  Name=Expense Claims to Approve;
+                                  CaptionML=[ENU=Expense Claims to Approve;
+                                             ENG=Expense Claims to Approve];
+                                  OnAction=VAR
+                                             EMApprovalEntry@1000000000 : Record 6086319;
+                                           BEGIN
+                                             //SIG.01
+                                             EMApprovalEntry.RESET;
+                                             EMApprovalEntry.SETRANGE("Approver ID",USERID);
+                                             PAGE.RUNMODAL(PAGE::"EM Approval Entries",EMApprovalEntry);
+                                           END;
+                                            }
+                }
+                 }
 
   }
   CODE
