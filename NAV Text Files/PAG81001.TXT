@@ -2,14 +2,15 @@ OBJECT Page 81001 TA Web RTC
 {
   OBJECT-PROPERTIES
   {
-    Date=10/10/17;
-    Time=10:18:31;
+    Date=19/10/17;
+    Time=15:06:10;
     Modified=Yes;
     Version List=TA1.0;
   }
   PROPERTIES
   {
-    CaptionML=ENU=Portal 2013R2;
+    CaptionML=[ENU=Portal 2017;
+               ENG=Portal 2017];
     PageType=RoleCenter;
     ActionList=ACTIONS
     {
@@ -56,10 +57,16 @@ OBJECT Page 81001 TA Web RTC
 
     { 1000000005;2;Part   ;
                 PagePartID=Page9151;
+                Visible=false;
+                PartType=Page }
+
+    { 1000000007;2;Part   ;
+                PagePartID=Page81059;
                 PartType=Page }
 
     { 1000000006;2;Part   ;
                 PagePartID=Page81061;
+                Visible=false;
                 PartType=Page }
 
   }

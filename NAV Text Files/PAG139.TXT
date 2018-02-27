@@ -3,7 +3,7 @@ OBJECT Page 139 Posted Purch. Invoice Subform
   OBJECT-PROPERTIES
   {
     Date=25/10/17;
-    Time=13:17:30;
+    Time=09:48:50;
     Modified=Yes;
     Version List=NAVW110.00,TA1.0;
   }
@@ -16,6 +16,12 @@ OBJECT Page 139 Posted Purch. Invoice Subform
     SourceTable=Table123;
     PageType=ListPart;
     AutoSplitKey=Yes;
+    OnAfterGetRecord=BEGIN
+                       // TES DJA 25/10/2017 - START
+                       ShowShortcutDimCode(ShortcutDimCode);
+                       // TES DJA 25/10/2017 - END
+                     END;
+
     OnAfterGetCurrRecord=BEGIN
                            DocumentTotals.CalculatePostedPurchInvoiceTotals(TotalPurchInvHeader,VATAmount,Rec);
                          END;
@@ -24,11 +30,19 @@ OBJECT Page 139 Posted Purch. Invoice Subform
     {
       { 1900000004;0 ;ActionContainer;
                       ActionContainerType=ActionItems }
-      { 1907935204;1 ;ActionGroup;
-                      CaptionML=[ENU=&Line;
-                                 ENG=&Line];
-                      Image=Line }
-      { 1901314304;2 ;Action    ;
+      { 1000000001;1 ;Action    ;
+                      Name=DeferralSchedule;
+                      CaptionML=[ENU=Deferral Schedule;
+                                 ENG=Deferral Schedule];
+                      ToolTipML=[ENU=View the deferral schedule that governs how expenses paid with this purchase document were deferred to different accounting periods when the document was posted.;
+                                 ENG=View the deferral schedule that governs how expenses paid with this purchase document were deferred to different accounting periods when the document was posted.];
+                      ApplicationArea=#Suite;
+                      Image=PaymentPeriod;
+                      OnAction=BEGIN
+                                 ShowDeferrals;
+                               END;
+                                }
+      { 1000000002;1 ;Action    ;
                       Name=Dimensions;
                       AccessByPermission=TableData 348=R;
                       ShortCutKey=Shift+Ctrl+D;
@@ -41,6 +55,10 @@ OBJECT Page 139 Posted Purch. Invoice Subform
                                  ShowDimensions;
                                END;
                                 }
+      { 1907935204;1 ;ActionGroup;
+                      CaptionML=[ENU=&Line;
+                                 ENG=&Line];
+                      Image=Line }
       { 1904945204;2 ;Action    ;
                       Name=Comments;
                       CaptionML=[ENU=Co&mments;
@@ -68,18 +86,6 @@ OBJECT Page 139 Posted Purch. Invoice Subform
                                  IF NOT (Type IN [Type::Item,Type::"Charge (Item)"]) THEN
                                    TESTFIELD(Type);
                                  ShowItemReceiptLines;
-                               END;
-                                }
-      { 13      ;2   ;Action    ;
-                      Name=DeferralSchedule;
-                      CaptionML=[ENU=Deferral Schedule;
-                                 ENG=Deferral Schedule];
-                      ToolTipML=[ENU=View the deferral schedule that governs how expenses paid with this purchase document were deferred to different accounting periods when the document was posted.;
-                                 ENG=View the deferral schedule that governs how expenses paid with this purchase document were deferred to different accounting periods when the document was posted.];
-                      ApplicationArea=#Suite;
-                      Image=PaymentPeriod;
-                      OnAction=BEGIN
-                                 ShowDeferrals;
                                END;
                                 }
     }
@@ -277,6 +283,58 @@ OBJECT Page 139 Posted Purch. Invoice Subform
                 SourceExpr="Shortcut Dimension 2 Code";
                 Visible=FALSE }
 
+    { 1000000008;2;Field  ;
+                SourceExpr=ShortcutDimCode[3];
+                CaptionClass='1,2,3';
+                TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(3),
+                                                            Dimension Value Type=CONST(Standard),
+                                                            Blocked=CONST(No));
+                Visible=FALSE;
+                Editable=FALSE }
+
+    { 1000000007;2;Field  ;
+                SourceExpr=ShortcutDimCode[4];
+                CaptionClass='1,2,4';
+                TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(4),
+                                                            Dimension Value Type=CONST(Standard),
+                                                            Blocked=CONST(No));
+                Visible=FALSE;
+                Editable=FALSE }
+
+    { 1000000006;2;Field  ;
+                SourceExpr=ShortcutDimCode[5];
+                CaptionClass='1,2,5';
+                TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(5),
+                                                            Dimension Value Type=CONST(Standard),
+                                                            Blocked=CONST(No));
+                Editable=FALSE }
+
+    { 1000000005;2;Field  ;
+                SourceExpr=ShortcutDimCode[6];
+                CaptionClass='1,2,6';
+                TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(6),
+                                                            Dimension Value Type=CONST(Standard),
+                                                            Blocked=CONST(No));
+                Editable=FALSE }
+
+    { 1000000004;2;Field  ;
+                SourceExpr=ShortcutDimCode[7];
+                CaptionClass='1,2,7';
+                TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(7),
+                                                            Dimension Value Type=CONST(Standard),
+                                                            Blocked=CONST(No));
+                Visible=FALSE;
+                Editable=FALSE }
+
+    { 1000000003;2;Field  ;
+                SourceExpr=ShortcutDimCode[8];
+                CaptionClass='1,2,8';
+                TableRelation="Dimension Value".Code WHERE (Global Dimension No.=CONST(8),
+                                                            Dimension Value Type=CONST(Standard),
+                                                            Blocked=CONST(No));
+                Visible=FALSE;
+                Editable=FALSE }
+
     { 31  ;1   ;Group     ;
                 GroupType=Group }
 
@@ -348,6 +406,7 @@ OBJECT Page 139 Posted Purch. Invoice Subform
       TotalPurchInvHeader@1002 : Record 122;
       DocumentTotals@1001 : Codeunit 57;
       VATAmount@1000 : Decimal;
+      ShortcutDimCode@1000000000 : ARRAY [8] OF Code[20];
 
     BEGIN
     END.

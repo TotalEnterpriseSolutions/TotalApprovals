@@ -1,0 +1,36 @@
+OBJECT Table 81023 User Procurement Workflows
+{
+  OBJECT-PROPERTIES
+  {
+    Date=04/10/17;
+    Time=09:11:37;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;User                ;Code50        ;TableRelation=User."User Name" }
+    { 2   ;   ;Document Type       ;Code20        ;TableRelation="Procurement Workflow"."Procurement Workflow" }
+    { 3   ;   ;Maps to NAV Type    ;Option        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Procurement Workflow"."Maps to NAV Type" WHERE (Procurement Workflow=FIELD(Document Type)));
+                                                   OptionString=Purchase Order,Purchase Invoice,Purchase Credit,Sales Order,Sales Credit,Data Capture,Expenses,Credit Card,Transfer;
+                                                   Editable=No }
+  }
+  KEYS
+  {
+    {    ;User,Document Type                      ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

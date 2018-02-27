@@ -1,0 +1,33 @@
+OBJECT Table 81004 Catalogue Line Additional Info
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=13:03:11;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Catalogue Code      ;Code20        ;TableRelation=Catalogue.Code }
+    { 2   ;   ;Index               ;Integer        }
+    { 3   ;   ;Field Type          ;Code20         }
+  }
+  KEYS
+  {
+    {    ;Catalogue Code                          ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

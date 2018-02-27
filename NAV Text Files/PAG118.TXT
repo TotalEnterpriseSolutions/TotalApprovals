@@ -2,8 +2,8 @@ OBJECT Page 118 General Ledger Setup
 {
   OBJECT-PROPERTIES
   {
-    Date=25/10/17;
-    Time=14:08:19;
+    Date=16/10/17;
+    Time=23:56:13;
     Modified=Yes;
     Version List=NAVW110.00,NAVGB10.00,TA1.0;
   }

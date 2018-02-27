@@ -1,0 +1,115 @@
+OBJECT Table 81003 Catalogue Line
+{
+  OBJECT-PROPERTIES
+  {
+    Date=21/09/17;
+    Time=20:10:02;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Catalogue Code      ;Code20        ;TableRelation=Catalogue.Code }
+    { 2   ;   ;Index               ;Integer        }
+    { 3   ;   ;Parent Index        ;Integer        }
+    { 4   ;   ;Description         ;Text50         }
+    { 5   ;   ;Type                ;Option        ;InitValue=G/L Account;
+                                                   OptionString=[ ,G/L Account,Item,,Fixed Asset,Charge (Item)] }
+    { 6   ;   ;No.                 ;Code20        ;TableRelation=IF (Type=CONST(" ")) "Standard Text"
+                                                                 ELSE IF (Type=CONST(G/L Account)) "G/L Account" WHERE (Account Type=CONST(Posting),
+                                                                                                                        Direct Posting=CONST(Yes))
+                                                                                                                        ELSE IF (Type=CONST(Item)) Item
+                                                                                                                        ELSE IF (Type=CONST(3)) Resource
+                                                                                                                        ELSE IF (Type=CONST(Fixed Asset)) "Fixed Asset"
+                                                                                                                        ELSE IF (Type=CONST("Charge (Item)")) "Item Charge";
+                                                   OnValidate=VAR
+                                                                LcduDocumentFns@1000000000 : Codeunit 81001;
+                                                              BEGIN
+                                                                CopyDescription();
+                                                                //Copy Dimension Rules from underlying GL Account
+                                                                LcduDocumentFns.CopyFromGLDimtoCatDim("Catalogue Code",Index,Type,"No.");
+                                                              END;
+                                                               }
+    { 7   ;   ;Price               ;Decimal        }
+    { 8   ;   ;Default VAT         ;Code10        ;TableRelation="VAT Product Posting Group" }
+    { 9   ;   ;Alternative VAT     ;Code10        ;TableRelation="VAT Product Posting Group" }
+    { 10  ;   ;Alternative VAT 1   ;Code10        ;TableRelation="VAT Product Posting Group" }
+    { 11  ;   ;Total Fiancials Description;Text150 }
+    { 12  ;   ;Prefered Suppliers  ;Integer       ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Catalogue Line Additional Info" WHERE (Catalogue Code=FIELD(Catalogue Code),
+                                                                                                             Index=FIELD(Index)));
+                                                   BlankZero=Yes;
+                                                   Editable=No }
+    { 13  ;   ;Image URL           ;Text80         }
+    { 14  ;   ;Web URL             ;Text80         }
+    { 15  ;   ;Supplier Catalogue No.;Text30       }
+    { 16  ;   ;Default Dimension 1 ;Code20        ;TableRelation=Dimension }
+    { 17  ;   ;Default Dimension 1 Value;Code20   ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FIELD(Default Dimension 1)) }
+    { 18  ;   ;Default Dimension 2 ;Code20        ;TableRelation=Dimension }
+    { 19  ;   ;Default Dimension 2 Value;Code20   ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FIELD(Default Dimension 2)) }
+    { 20  ;   ;Allow VAT Specification;Boolean     }
+    { 98  ;   ;Hide Line           ;Boolean        }
+    { 99  ;   ;Header Line         ;Boolean       ;OnValidate=VAR
+                                                                MissingMapping@1000000000 : TextConst 'ENU=A mapping must be specified before the catalogue line can be selectable.;ENG=A mapping must be specified before the catalogue line can be selectable.';
+                                                                CatalogueLine@1000000001 : Record 81003;
+                                                              BEGIN
+                                                                IF NOT "Header Line" THEN BEGIN
+                                                                  CatalogueLine.RESET;
+                                                                  CatalogueLine.SETRANGE("Catalogue Code","Catalogue Code");
+                                                                  CatalogueLine.SETRANGE("Parent Index",Index);
+                                                                  IF NOT CatalogueLine.FINDSET(FALSE) THEN
+                                                                    IF "No." = '' THEN ERROR(MissingMapping);
+                                                                END;
+                                                              END;
+
+                                                   CaptionML=[ENU=Header Line;
+                                                              ENG=Header Line] }
+    { 100 ;   ;Commercial Filter   ;Text150        }
+    { 101 ;   ;Dimension Setup     ;Integer       ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Total Approval Dimensions" WHERE (Catalogue=FIELD(Catalogue Code),
+                                                                                                        Index=FIELD(Index))) }
+    { 150 ;   ;QTY                 ;Integer        }
+    { 200 ;   ;Budget G/L Account  ;Code100       ;TableRelation="G/L Account" }
+    { 400 ;   ;Job Coding Required ;Boolean        }
+    { 401 ;   ;Job No.             ;Code20        ;TableRelation=Job }
+    { 402 ;   ;Job Task No.        ;Code20        ;TableRelation="Job Task"."Job Task No." }
+    { 403 ;   ;Mileage Expense     ;Boolean        }
+    { 404 ;   ;No. of Additional Info;Integer     ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Catalogue Line Additional Info" WHERE (Catalogue Code=FIELD(Catalogue Code),
+                                                                                                             Index=FIELD(Index)));
+                                                   Editable=No }
+  }
+  KEYS
+  {
+    {    ;Catalogue Code,Index                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    LOCAL PROCEDURE CopyDescription@1000000000();
+    VAR
+      GLAccount@1000000000 : Record 15;
+      Item@1000000001 : Record 27;
+      FixedAsset@1000000002 : Record 5600;
+    BEGIN
+      IF Description <>'' THEN EXIT;
+      CASE Type OF
+        Type::" ":;
+        Type::"G/L Account":IF GLAccount.GET("No.")THEN Description := GLAccount.Name;
+        Type::"Fixed Asset": IF FixedAsset.GET("No.") THEN Description := FixedAsset.Description;
+        Type::Item: IF Item.GET("No.") THEN Description := Item.Description;
+        Type::"Charge (Item)":;
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

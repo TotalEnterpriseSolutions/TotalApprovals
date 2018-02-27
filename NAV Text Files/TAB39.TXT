@@ -2,10 +2,10 @@ OBJECT Table 39 Purchase Line
 {
   OBJECT-PROPERTIES
   {
-    Date=22/09/17;
-    Time=12:09:38;
+    Date=28/09/17;
+    Time=16:39:43;
     Modified=Yes;
-    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
+    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,PVIntegration,TA1.0;
   }
   PROPERTIES
   {
@@ -2005,7 +2005,10 @@ OBJECT Table 39 Purchase Line
                                                                 DeferralPostDate@1000 : Date;
                                                               BEGIN
                                                                 GetPurchHeader;
-                                                                DeferralPostDate := PurchHeader."Posting Date";
+                                                                // TES001
+                                                                //DeferralPostDate := PurchHeader."Posting Date";  // TES001
+                                                                DeferralPostDate := PurchHeader."Document Date";
+                                                                // TES001
 
                                                                 DeferralUtilities.DeferralCodeOnValidate(
                                                                   "Deferral Code",DeferralUtilities.GetPurchDeferralDocType,'','',
@@ -2719,6 +2722,25 @@ OBJECT Table 39 Purchase Line
     { 10500;  ;Reverse Charge Item ;Boolean       ;CaptionML=[ENU=Reverse Charge Item;
                                                               ENG=Reverse Charge Item];
                                                    Editable=No }
+    { 50000;  ;Start Date          ;Date           }
+    { 50001;  ;End Date            ;Date           }
+    { 50002;  ;Deferred Purchase Frequency;Option ;OptionString=[ ,Daily,Weekly,Monthly,Quarterly,Annually] }
+    { 50003;  ;Deferred Purchase Start;Option     ;OptionString=[ ,Start of Period,End of Period] }
+    { 50008;  ;Deferred Purchase Applies;Boolean  ;OnValidate=VAR
+                                                                LrecGPS@1000000000 : Record 252;
+                                                                Ltxt001@1000000001 : TextConst 'ENU=General Posting Setup not found';
+                                                              BEGIN
+
+                                                                IF "Deferred Purchase Applies" THEN BEGIN
+                                                                   IF NOT LrecGPS.GET("Gen. Bus. Posting Group","Gen. Prod. Posting Group") THEN
+                                                                      ERROR (Ltxt001);
+                                                                   LrecGPS.TESTFIELD("Deferred Purchases Account");
+                                                                   LrecGPS.TESTFIELD("Deferred Purchases Frequency");
+                                                                   "Deferred Purchase Frequency" := LrecGPS."Deferred Purchases Frequency";
+                                                                   "Deferred Purchase Start" := LrecGPS."Deferred Purchases Start"
+                                                                END;
+                                                              END;
+                                                               }
     { 81000;  ;Original Order Qty. ;Decimal       ;Description=TA1.0 }
     { 81001;  ;Approval Batch      ;Code20        ;Description=TA1.0 }
     { 81002;  ;Line Source         ;Option        ;OptionCaptionML=[ENU=" ,Portal";
@@ -2853,6 +2875,34 @@ OBJECT Table 39 Purchase Line
                                                               END;
 
                                                    Description=TA1.0 }
+    { 82000;  ;Commitment Date Old ;Date          ;Description=P.Light01 }
+    { 82001;  ;Committed Amount (LCY) Old;Decimal ;Description=P.Light01;
+                                                   Editable=No }
+    { 82002;  ;Commitment Account Old;Code20      ;Description=P.Light01 }
+    { 90000;  ;Dim 1 Filter Code   ;Code20        ;FieldClass=FlowFilter;
+                                                   TableRelation=Dimension }
+    { 90001;  ;Dim 2 Filter Code   ;Code20        ;FieldClass=FlowFilter;
+                                                   TableRelation=Dimension }
+    { 90002;  ;Dim 3 Filter Code   ;Code20        ;FieldClass=FlowFilter;
+                                                   TableRelation=Dimension }
+    { 90003;  ;Dim 4 Filter Code   ;Code20        ;FieldClass=FlowFilter;
+                                                   TableRelation=Dimension }
+    { 90010;  ;Dim 1 Value         ;Code20        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Dimension Set Entry"."Dimension Value Code" WHERE (Dimension Set ID=FIELD(Dimension Set ID),
+                                                                                                                          Dimension Code=FIELD(Dim 1 Filter Code)));
+                                                   Editable=No }
+    { 90011;  ;Dim 2 Value         ;Code20        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Dimension Set Entry"."Dimension Value Code" WHERE (Dimension Set ID=FIELD(Dimension Set ID),
+                                                                                                                          Dimension Code=FIELD(Dim 2 Filter Code)));
+                                                   Editable=No }
+    { 90012;  ;Dim 3 Value         ;Code20        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Dimension Set Entry"."Dimension Value Code" WHERE (Dimension Set ID=FIELD(Dimension Set ID),
+                                                                                                                          Dimension Code=FIELD(Dim 3 Filter Code)));
+                                                   Editable=No }
+    { 90013;  ;Dim 4 Value         ;Code20        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Dimension Set Entry"."Dimension Value Code" WHERE (Dimension Set ID=FIELD(Dimension Set ID),
+                                                                                                                          Dimension Code=FIELD(Dim 4 Filter Code)));
+                                                   Editable=No }
     { 99000750;;Routing No.        ;Code20        ;TableRelation="Routing Header";
                                                    CaptionML=[ENU=Routing No.;
                                                               ENG=Routing No.] }
@@ -5561,7 +5611,8 @@ OBJECT Table 39 Purchase Line
 
     BEGIN
     {
-      TA1.0 Additional Key added
+      001  28/09/17  TES-JH
+           - Changed Deferral Schedule to use <Document Date> instead of <Posting Date>
     }
     END.
   }

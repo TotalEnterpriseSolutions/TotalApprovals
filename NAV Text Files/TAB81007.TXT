@@ -1,0 +1,38 @@
+OBJECT Table 81007 Total Financials Attachment
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=13:05:37;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;TableID             ;Integer        }
+    { 2   ;   ;Code                ;Code20         }
+    { 3   ;   ;Index               ;Integer       ;AutoIncrement=Yes;
+                                                   Editable=No }
+    { 4   ;   ;Line No.            ;Integer        }
+    { 5   ;   ;Attachment          ;Text250        }
+    { 6   ;   ;File Name           ;Text150        }
+    { 7   ;   ;Unapproved Vendor No.;Code20        }
+  }
+  KEYS
+  {
+    {    ;TableID                                 ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

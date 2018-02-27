@@ -2,8 +2,8 @@ OBJECT Page 138 Posted Purchase Invoice
 {
   OBJECT-PROPERTIES
   {
-    Date=03/10/17;
-    Time=17:13:41;
+    Date=13/10/17;
+    Time=13:46:14;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -84,6 +84,14 @@ OBJECT Page 138 Posted Purchase Invoice
                                  ApprovalsMgmt@1000 : Codeunit 1535;
                                BEGIN
                                  ApprovalsMgmt.ShowPostedApprovalEntries(RECORDID);
+                               END;
+                                }
+      { 1000000001;2 ;Action    ;
+                      CaptionML=ENU=Scanned Document;
+                      OnAction=VAR
+                                 TESFunctions@1000000000 : Codeunit 50000;
+                               BEGIN
+                                 TESFunctions.func_ShowScannedDocument(Barcode);
                                END;
                                 }
       { 1900000004;0 ;ActionContainer;
@@ -772,6 +780,10 @@ OBJECT Page 138 Posted Purchase Invoice
                 Visible=NOT IsOfficeAddin;
                 PartType=Page;
                 ShowFilter=No }
+
+    { 1000000002;1;Part   ;
+                PagePartID=Page50001;
+                PartType=Page }
 
     { 1900383207;1;Part   ;
                 Visible=FALSE;

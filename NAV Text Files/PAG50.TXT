@@ -2,8 +2,8 @@ OBJECT Page 50 Purchase Order
 {
   OBJECT-PROPERTIES
   {
-    Date=22/09/17;
-    Time=07:13:09;
+    Date=11/10/17;
+    Time=13:48:52;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TC1.0,TA1.0;
   }
@@ -15,8 +15,8 @@ OBJECT Page 50 Purchase Order
     SourceTableView=WHERE(Document Type=FILTER(Order));
     PageType=Document;
     RefreshOnActivate=Yes;
-    PromotedActionCategoriesML=[ENU=New,Process,Report,Approve,Release,Posting,Prepare,Total Communications,Request Approval,Print;
-                                ENG=New,Process,Report,Approve,Release,Posting,Prepare,Total Communications,Request Approval,Print];
+    PromotedActionCategoriesML=[ENU=New,Process,Report,Approve,Release,Posting,Prepare,Invoice,Request Approval,Print;
+                                ENG=New,Process,Report,Approve,Release,Posting,Prepare,Invoice,Request Approval,Print];
     OnInit=VAR
              PurchasesPayablesSetup@1000 : Record 312;
            BEGIN
@@ -150,15 +150,12 @@ OBJECT Page 50 Purchase Order
                       CaptionML=[ENU=Invoices;
                                  ENG=Invoices];
                       ApplicationArea=#Suite;
+                      RunObject=Page 146;
+                      RunPageView=SORTING(Order No.);
+                      RunPageLink=Order No.=FIELD(No.);
                       Promoted=No;
                       PromotedIsBig=No;
-                      Image=Invoice;
-                      OnAction=VAR
-                                 DocumentFunctions@1000000000 : Codeunit 81001;
-                               BEGIN
-                                 DocumentFunctions.ShowPostedInvoice(Rec);
-                               END;
-                                }
+                      Image=Invoice }
       { 205     ;2   ;Action    ;
                       Name=PostedPrepaymentInvoices;
                       CaptionML=[ENU=Prepa&yment Invoices;
@@ -881,6 +878,13 @@ OBJECT Page 50 Purchase Order
 
                 ShowMandatory=TRUE }
 
+    { 1000000089;2;Field  ;
+                SourceExpr=Barcode;
+                OnValidate=BEGIN
+                             //TES001
+                           END;
+                            }
+
     { 62  ;2   ;Group     ;
                 CaptionML=[ENU=Buy-from;
                            ENG=Buy-from];
@@ -1540,6 +1544,9 @@ OBJECT Page 50 Purchase Order
     END;
 
     BEGIN
+    {
+      TES001 27-07-2017 Added <Barcode>
+    }
     END.
   }
 }

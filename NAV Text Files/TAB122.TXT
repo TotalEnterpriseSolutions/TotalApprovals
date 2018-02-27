@@ -2,8 +2,8 @@ OBJECT Table 122 Purch. Inv. Header
 {
   OBJECT-PROPERTIES
   {
-    Date=03/10/17;
-    Time=17:07:46;
+    Date=13/10/17;
+    Time=13:24:17;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -389,6 +389,7 @@ OBJECT Table 122 Purch. Inv. Header
     { 10501;  ;Type of Supply Code ;Code10        ;TableRelation="Type of Supply";
                                                    CaptionML=[ENU=Type of Supply Code;
                                                               ENG=Type of Supply Code] }
+    { 50010;  ;Barcode             ;Code20         }
     { 81003;  ;Originator          ;Code50        ;TableRelation=User."User Name";
                                                    CaptionML=[ENU=Raised by Code;
                                                               ENG=Raised by Code];

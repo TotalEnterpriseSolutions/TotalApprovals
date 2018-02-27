@@ -1,0 +1,40 @@
+OBJECT Table 81012 Total Approval Role
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=15:29:14;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Code                ;Code50         }
+    { 2   ;   ;Description         ;Text50         }
+    { 3   ;   ;Businesswide        ;Boolean        }
+    { 4   ;   ;Seniority Level     ;Integer        }
+    { 5   ;   ;Related Documents   ;Integer       ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Role Document Type" WHERE (Role=FIELD(Code)));
+                                                   Editable=No }
+    { 6   ;   ;Role Assignments    ;Integer       ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Total Approval User Role" WHERE (Approval Role=FIELD(Code)));
+                                                   Editable=No }
+  }
+  KEYS
+  {
+    {    ;Code                                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

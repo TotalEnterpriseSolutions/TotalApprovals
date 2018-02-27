@@ -1,0 +1,66 @@
+OBJECT Table 81018 Total Approval Dimensions
+{
+  OBJECT-PROPERTIES
+  {
+    Date=13/09/17;
+    Time=11:52:16;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page81035;
+    DrillDownPageID=Page81035;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Catalogue           ;Code20         }
+    { 2   ;   ;Index               ;Integer        }
+    { 3   ;   ;Dimension Code      ;Code20        ;TableRelation=Dimension;
+                                                   OnValidate=VAR
+                                                                DimMgt@1000000000 : Codeunit 408;
+                                                              BEGIN
+                                                                IF NOT DimMgt.CheckDim("Dimension Code") THEN
+                                                                  ERROR(DimMgt.GetDimErr);
+                                                              END;
+
+                                                   CaptionML=[ENU=Dimension Code;
+                                                              ENG=Dimension Code];
+                                                   NotBlank=Yes }
+    { 4   ;   ;Dimension Value Code;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FIELD(Dimension Code));
+                                                   OnValidate=VAR
+                                                                DimMgt@1000000000 : Codeunit 408;
+                                                              BEGIN
+                                                                IF NOT DimMgt.CheckDimValue("Dimension Code","Dimension Value Code") THEN
+                                                                  ERROR(DimMgt.GetDimErr);
+
+                                                                IF "Dimension Value Code" <> '' THEN "Value Posting" := "Value Posting"::"Same Code";
+                                                              END;
+
+                                                   CaptionML=[ENU=Dimension Value Code;
+                                                              ENG=Dimension Value Code] }
+    { 5   ;   ;Value Posting       ;Option        ;OnValidate=BEGIN
+                                                                IF "Value Posting" <> "Value Posting"::"Same Code" THEN "Dimension Value Code" := '';
+                                                              END;
+
+                                                   CaptionML=[ENU=Value Posting;
+                                                              ENG=Value Posting];
+                                                   OptionCaptionML=[ENU=" ,Code Mandatory,Same Code,No Code";
+                                                                    ENG=" ,Code Mandatory,Same Code,No Code"];
+                                                   OptionString=[ ,Code Mandatory,Same Code,No Code] }
+  }
+  KEYS
+  {
+    {    ;Catalogue,Index,Dimension Code          ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

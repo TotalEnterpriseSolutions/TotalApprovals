@@ -2,8 +2,8 @@ OBJECT Table 81000 Total Approval Setup
 {
   OBJECT-PROPERTIES
   {
-    Date=10/11/17;
-    Time=16:59:24;
+    Date=05/10/17;
+    Time=10:43:35;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -31,7 +31,7 @@ OBJECT Table 81000 Total Approval Setup
     { 15  ;   ;Test Mode           ;Boolean        }
     { 16  ;   ;Document Path       ;Text250        }
     { 17  ;   ;Document Suffix     ;Text4          }
-    { 18  ;   ;Background Posting Account;Code30  ;TableRelation="User Setup"."User ID" }
+    { 18  ;   ;Background Posting Account;Code20  ;TableRelation="User Setup"."User ID" }
   }
   KEYS
   {

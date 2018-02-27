@@ -2,8 +2,8 @@ OBJECT Page 81014 TA Purchase Order
 {
   OBJECT-PROPERTIES
   {
-    Date=11/10/17;
-    Time=16:35:13;
+    Date=19/10/17;
+    Time=13:20:27;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -14,7 +14,6 @@ OBJECT Page 81014 TA Purchase Order
                ENG=Purchase Order];
     InsertAllowed=No;
     DeleteAllowed=No;
-    LinksAllowed=No;
     SourceTable=Table38;
     DataCaptionExpr=GtxtCaption;
     SourceTableView=WHERE(Document Type=FILTER(Order|Invoice));
@@ -901,7 +900,8 @@ OBJECT Page 81014 TA Purchase Order
                 SourceExpr="Shortcut Dimension 1 Code" }
 
     { 1000000005;2;Field  ;
-                SourceExpr="Shortcut Dimension 2 Code" }
+                SourceExpr="Shortcut Dimension 2 Code";
+                Visible=false }
 
     { 1905885101;1;Group  ;
                 CaptionML=[ENU=Invoicing;
@@ -1193,6 +1193,10 @@ OBJECT Page 81014 TA Purchase Order
                 Visible=FALSE;
                 PartType=Page }
 
+    { 1000000019;1;Part   ;
+                PartType=System;
+                SystemPartID=Notes }
+
     { 1000000021;1;Part   ;
                 Name=PortalAttachmentFactBox;
                 PagePartID=Page81025;
@@ -1214,7 +1218,6 @@ OBJECT Page 81014 TA Purchase Order
                             Line No.=FIELD(Line No.);
                 PagePartID=Page81030;
                 ProviderID=60;
-                Visible=FALSE;
                 PartType=Page }
 
   }

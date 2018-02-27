@@ -2,10 +2,10 @@ OBJECT Table 123 Purch. Inv. Line
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=12:15:04;
+    Date=25/10/17;
+    Time=09:45:57;
     Modified=Yes;
-    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
+    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,PVIntegration,TA1.0;
   }
   PROPERTIES
   {
@@ -398,6 +398,12 @@ OBJECT Table 123 Purch. Inv. Line
                                                    Editable=No }
     { 10501;  ;Reverse Charge      ;Decimal       ;CaptionML=[ENU=Reverse Charge;
                                                               ENG=Reverse Charge] }
+    { 50000;  ;Start Date          ;Date           }
+    { 50001;  ;End Date            ;Date           }
+    { 50002;  ;Deferred Purchase Frequency;Option ;OptionString=[ ,Daily,Weekly,Monthly,Quarterly,Annually] }
+    { 50003;  ;Deferred Purchase Start;Option     ;OptionString=[ ,Start of Period,End of Period] }
+    { 50008;  ;Deferred Purchase Applies;Boolean   }
+    { 50009;  ;Deferred Purchase Posted;Boolean    }
     { 81004;  ;Catalogue Code      ;Code20        ;TableRelation=Catalogue.Code;
                                                    OnLookup=VAR
                                                               LrecDocumentTypeCatalogue@1000000003 : Record 81011;
@@ -690,6 +696,11 @@ OBJECT Table 123 Purch. Inv. Line
       PurchCommentLine@1000 : Record 43;
     BEGIN
       EXIT(PurchCommentLine."Document Type"::"Posted Invoice")
+    END;
+
+    PROCEDURE ShowShortcutDimCode@27(VAR ShortcutDimCode@1000 : ARRAY [8] OF Code[20]);
+    BEGIN
+      DimMgt.GetShortcutDimensions("Dimension Set ID",ShortcutDimCode);
     END;
 
     BEGIN

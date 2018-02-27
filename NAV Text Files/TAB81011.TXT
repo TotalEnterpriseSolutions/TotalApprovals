@@ -1,0 +1,39 @@
+OBJECT Table 81011 Absence
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=10:02:08;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;User                ;Code50        ;TableRelation="User Setup"."User ID" }
+    { 2   ;   ;Date                ;Date           }
+    { 3   ;   ;Delegate User Code  ;Code50        ;TableRelation="User Setup"."User ID" }
+    { 4   ;   ;Created Date        ;Date           }
+    { 5   ;   ;Day                 ;Text30        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Accounting Period GB"."Period Name" WHERE (Period Type=CONST(Day),
+                                                                                                                  Period Start=FIELD(Date)));
+                                                   Editable=No }
+    { 6   ;   ;Approval Entries    ;Integer        }
+  }
+  KEYS
+  {
+    {    ;User,Date                               ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

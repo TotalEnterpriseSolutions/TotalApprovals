@@ -2,8 +2,8 @@ OBJECT Page 119 User Setup
 {
   OBJECT-PROPERTIES
   {
-    Date=21/09/17;
-    Time=22:30:38;
+    Date=17/10/17;
+    Time=15:43:29;
     Modified=Yes;
     Version List=NAVW110.00,TC1.0,TA1.0;
   }
@@ -95,7 +95,11 @@ OBJECT Page 119 User Setup
                 SourceExpr="TA Administrator" }
 
     { 1000000006;2;Field  ;
-                SourceExpr="Approval Delegate" }
+                SourceExpr="Approval Delegate";
+                Visible=false }
+
+    { 1000000008;2;Field  ;
+                SourceExpr=Substitute }
 
     { 1000000007;2;Field  ;
                 SourceExpr="Default Location" }

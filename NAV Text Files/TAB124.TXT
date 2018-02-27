@@ -2,10 +2,10 @@ OBJECT Table 124 Purch. Cr. Memo Hdr.
 {
   OBJECT-PROPERTIES
   {
-    Date=29/08/17;
-    Time=14:12:26;
+    Date=20/09/17;
+    Time=16:08:09;
     Modified=Yes;
-    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
+    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TES001,TA1.0;
   }
   PROPERTIES
   {
@@ -374,6 +374,11 @@ OBJECT Table 124 Purch. Cr. Memo Hdr.
     { 10501;  ;Type of Supply Code ;Code10        ;TableRelation="Type of Supply";
                                                    CaptionML=[ENU=Type of Supply Code;
                                                               ENG=Type of Supply Code] }
+    { 50010;  ;Barcode             ;Code20        ;OnValidate=BEGIN
+                                                                //TES001
+                                                              END;
+
+                                                   Description=TES001 }
     { 81003;  ;Originator          ;Code50        ;TableRelation=User."User Name";
                                                    CaptionML=[ENU=Raised by Code;
                                                               ENG=Raised by Code];
@@ -411,6 +416,7 @@ OBJECT Table 124 Purch. Cr. Memo Hdr.
     {    ;Prepayment Order No.                     }
     {    ;Pay-to Vendor No.                        }
     {    ;Posting Date                             }
+    {    ;Barcode                                  }
   }
   FIELDGROUPS
   {
@@ -500,6 +506,9 @@ OBJECT Table 124 Purch. Cr. Memo Hdr.
     END;
 
     BEGIN
+    {
+      TES001 27-07-2017 Added <Barcode>
+    }
     END.
   }
 }

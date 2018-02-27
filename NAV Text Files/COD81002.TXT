@@ -2,19 +2,21 @@ OBJECT Codeunit 81002 Total Approval Setup
 {
   OBJECT-PROPERTIES
   {
-    Date=21/09/17;
-    Time=17:09:30;
+    Date=17/10/17;
+    Time=13:53:12;
     Modified=Yes;
     Version List=TA1.0;
   }
   PROPERTIES
   {
     OnRun=BEGIN
-            CreateProfiles;
-            InitCueTables;
-            NoSeriesSetup;
-            InitTotalCommunicationSetup;
-            SetupDemoCompany;
+            //CreateProfiles;
+
+            //InitCueTables;
+            //NoSeriesSetup;
+            //InitTotalCommunicationSetup;
+            //SetupDemoCompany;
+            VendorVisible;
 
             MESSAGE('Complete!');
           END;
@@ -49,7 +51,7 @@ OBJECT Codeunit 81002 Total Approval Setup
       TotalApprovalSetup@1000000001 : Record 81000;
     BEGIN
       PurchaseCue.INIT;
-      PurchaseCue."Primary Key" := ' ';
+      PurchaseCue."Primary Key" := '';
       IF PurchaseCue.INSERT THEN;
 
       TotalApprovalSetup.INIT;
@@ -385,6 +387,17 @@ OBJECT Codeunit 81002 Total Approval Setup
       AssignDocumentTypes('Paula','GENERAL');
       AssignDocumentTypes('James','GENERAL');
       AssignDocumentTypes('Lee','GENERAL');
+    END;
+
+    LOCAL PROCEDURE VendorVisible@1000000013();
+    VAR
+      Vendor@1000000000 : Record 23;
+    BEGIN
+      Vendor.RESET;
+      IF Vendor.FINDFIRST THEN REPEAT
+        Vendor."Visible in Portal" := TRUE;
+        Vendor.MODIFY;
+      UNTIL Vendor.NEXT = 0
     END;
 
     BEGIN

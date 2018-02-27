@@ -2,8 +2,8 @@ OBJECT Page 81061 My Cost Centres - Figures
 {
   OBJECT-PROPERTIES
   {
-    Date=25/10/17;
-    Time=13:29:51;
+    Date=17/10/17;
+    Time=00:34:03;
     Modified=Yes;
     Version List=TA1.0;
   }
@@ -94,7 +94,7 @@ OBJECT Page 81061 My Cost Centres - Figures
                 OnDrillDown=VAR
                               LrecItem@1000000000 : Record 27;
                             BEGIN
-                              RunGLView;
+                              //RunGLView;
                               GetActual(TRUE);
                               CurrPage.UPDATE;
                             END;
@@ -107,7 +107,7 @@ OBJECT Page 81061 My Cost Centres - Figures
                 SourceExpr=GetBudget(FALSE);
                 OnDrillDown=BEGIN
                               RunGLView;
-                              GetBudget(TRUE);
+                              //GetBudget(TRUE);
                               CurrPage.UPDATE;
                             END;
                              }
@@ -118,7 +118,7 @@ OBJECT Page 81061 My Cost Centres - Figures
                            ENG=Committed Amount];
                 SourceExpr=GetCommited(FALSE);
                 OnDrillDown=BEGIN
-                              RunGLView;
+                              //RunGLView;
                               GetCommited(TRUE);
                               CurrPage.UPDATE;
                             END;

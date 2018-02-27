@@ -1,0 +1,58 @@
+OBJECT Table 81013 Total Approval User Role
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/10/17;
+    Time=10:16:33;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    LookupPageID=Page81043;
+    DrillDownPageID=Page81043;
+  }
+  FIELDS
+  {
+    { 1   ;   ;TF User             ;Code50        ;TableRelation="User Setup"."User ID" }
+    { 2   ;   ;Approval Role       ;Code20        ;TableRelation="Total Approval Role".Code }
+    { 3   ;   ;Dimension           ;Code20        ;TableRelation=Dimension.Code;
+                                                   OnValidate=VAR
+                                                                TotalApprovalRole@1000000000 : Record 81012;
+                                                                LtxtConst001@1000000001 : TextConst 'ENU=Apprval role ''%1'' is set to business wide approval, No Dimension assignmnet is required.;ENG=Apprval role ''%1'' is set to business wide approval, No Dimension assignmnet is required.';
+                                                              BEGIN
+                                                                TotalApprovalRole.RESET;
+                                                                IF TotalApprovalRole.GET("Approval Role") THEN BEGIN
+                                                                  IF TotalApprovalRole.Businesswide THEN BEGIN
+                                                                    Dimension := '';
+                                                                    //if guiallowed then MESSAGE(STRSUBSTNO(LtxtConst001,LrecApprovalRole.Description));
+                                                                  END;
+                                                                END;
+                                                              END;
+                                                               }
+    { 4   ;   ;Dimension Value     ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FIELD(Dimension)) }
+    { 5   ;   ;Dimension Name      ;Text50        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Dimension Value".Name WHERE (Dimension Code=FIELD(Dimension),
+                                                                                                    Code=FIELD(Dimension Value)));
+                                                   Editable=No }
+    { 6   ;   ;Business Wide       ;Boolean       ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("Total Approval Role".Businesswide WHERE (Code=FIELD(Approval Role)));
+                                                   Editable=No }
+  }
+  KEYS
+  {
+    {    ;TF User,Dimension,Dimension Value,Approval Role;
+                                                   Clustered=Yes }
+    {    ;Dimension,Dimension Value,Approval Role  }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

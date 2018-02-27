@@ -1,0 +1,37 @@
+OBJECT Table 81019 Total Approval Dimension Tem
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=15:43:54;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Code                ;Code20         }
+    { 2   ;   ;Description         ;Text50         }
+    { 3   ;   ;Dimension Count     ;Integer       ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Dimension Template Detail" WHERE (Template Code=FIELD(Code))) }
+    { 4   ;   ;Auto Populate Dimension;Code20     ;TableRelation=Dimension }
+    { 5   ;   ;Auto Populate Dim Value Filter;Text50 }
+    { 6   ;   ;Allow Blocked Dimensions;Boolean    }
+  }
+  KEYS
+  {
+    {    ;Code                                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,32 @@
+OBJECT Table 81005 Procurement Workflow Catalogue
+{
+  OBJECT-PROPERTIES
+  {
+    Date=13/09/17;
+    Time=14:22:16;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Document Type       ;Code20        ;TableRelation="Procurement Workflow"."Procurement Workflow" }
+    { 2   ;   ;Catalogue Code      ;Code20        ;TableRelation=Catalogue.Code }
+  }
+  KEYS
+  {
+    {    ;Document Type,Catalogue Code            ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

@@ -2,10 +2,10 @@ OBJECT Page 51 Purchase Invoice
 {
   OBJECT-PROPERTIES
   {
-    Date=03/10/17;
-    Time=16:37:08;
+    Date=16/10/17;
+    Time=22:38:09;
     Modified=Yes;
-    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
+    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0,TES001;
   }
   PROPERTIES
   {
@@ -420,6 +420,12 @@ OBJECT Page 51 Purchase Invoice
       { 47      ;1   ;ActionGroup;
                       CaptionML=[ENU=Request Approval;
                                  ENG=Request Approval] }
+      { 1000000007;2 ;Action    ;
+                      Name=Barcode;
+                      OnAction=BEGIN
+                                 // TES00
+                               END;
+                                }
       { 45      ;2   ;Action    ;
                       Name=Approvals;
                       AccessByPermission=TableData 454=R;
@@ -632,6 +638,14 @@ OBJECT Page 51 Purchase Invoice
 
                 ShowMandatory=TRUE }
 
+    { 1000000008;2;Field  ;
+                SourceExpr=Barcode;
+                OnValidate=BEGIN
+                             //TES001
+                           END;
+
+                ShowMandatory=TRUE }
+
     { 51  ;2   ;Group     ;
                 CaptionML=[ENU=Buy-from;
                            ENG=Buy-from];
@@ -733,6 +747,7 @@ OBJECT Page 51 Purchase Invoice
                 ApplicationArea=#Suite;
                 SourceExpr="Purchaser Code";
                 Importance=Additional;
+                Visible=FALSE;
                 OnValidate=BEGIN
                              PurchaserCodeOnAfterValidate;
                            END;
@@ -742,13 +757,15 @@ OBJECT Page 51 Purchase Invoice
                 ToolTipML=[ENU=Specifies the campaign number the document is linked to.;
                            ENG=Specifies the campaign number the document is linked to.];
                 SourceExpr="Campaign No.";
-                Importance=Additional }
+                Importance=Additional;
+                Visible=FALSE }
 
     { 115 ;2   ;Field     ;
                 ToolTipML=[ENU=Specifies the code of the responsibility center that is associated with the user, company, or vendor.;
                            ENG=Specifies the code of the responsibility centre that is associated with the user, company, or vendor.];
                 SourceExpr="Responsibility Center";
-                Importance=Additional }
+                Importance=Additional;
+                Visible=FALSE }
 
     { 65  ;2   ;Field     ;
                 ToolTipML=[ENU=Specifies the ID of the user who is responsible for the document.;

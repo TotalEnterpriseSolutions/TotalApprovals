@@ -2,10 +2,10 @@ OBJECT Table 125 Purch. Cr. Memo Line
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=13:25:23;
+    Date=24/07/17;
+    Time=20:00:08;
     Modified=Yes;
-    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
+    Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,PVIntegration,TA1.0;
   }
   PROPERTIES
   {
@@ -394,6 +394,12 @@ OBJECT Table 125 Purch. Cr. Memo Line
                                                    Editable=No }
     { 10501;  ;Reverse Charge      ;Decimal       ;CaptionML=[ENU=Reverse Charge;
                                                               ENG=Reverse Charge] }
+    { 50000;  ;Start Date          ;Date           }
+    { 50001;  ;End Date            ;Date           }
+    { 50002;  ;Deferred Purchase Frequency;Option ;OptionString=[ ,Daily,Weekly,Monthly,Quarterly,Annually] }
+    { 50003;  ;Deferred Purchase Start;Option     ;OptionString=[ ,Start of Period,End of Period] }
+    { 50008;  ;Deferred Purchase Applies;Boolean   }
+    { 50009;  ;Deferred Purchase Posted;Boolean    }
     { 81004;  ;Catalogue Code      ;Code20        ;TableRelation=Catalogue.Code;
                                                    OnLookup=VAR
                                                               LrecDocumentTypeCatalogue@1000000003 : Record 81011;

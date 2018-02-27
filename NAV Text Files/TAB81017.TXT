@@ -1,0 +1,33 @@
+OBJECT Table 81017 Role Document Type
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=16:32:12;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    DrillDownPageID=Page81046;
+  }
+  FIELDS
+  {
+    { 1   ;   ;Role                ;Code20        ;TableRelation="Total Approval Role".Code }
+    { 2   ;   ;Document Type       ;Code20        ;TableRelation="Procurement Workflow"."Procurement Workflow" }
+  }
+  KEYS
+  {
+    {    ;Role                                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

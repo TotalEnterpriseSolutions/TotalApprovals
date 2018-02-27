@@ -1,0 +1,66 @@
+OBJECT Table 81020 Dimension Template Detail
+{
+  OBJECT-PROPERTIES
+  {
+    Date=13/09/17;
+    Time=13:39:25;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    OnInsert=VAR
+               UserDimensionTemplateAss@1000000000 : Record 81021;
+               UserDimensionCoding@1000000001 : Record 81015;
+             BEGIN
+               UserDimensionTemplateAss.RESET;
+               UserDimensionTemplateAss.SETRANGE("Template Code","Template Code");
+               IF UserDimensionTemplateAss.FINDFIRST THEN REPEAT
+                 IF NOT UserDimensionCoding.GET(UserDimensionTemplateAss."User Code","Dimension Code","Dimension Value") THEN BEGIN
+                   //update user dimension profile
+                   UserDimensionCoding.INIT;
+                   UserDimensionCoding.VALIDATE("Portal User",UserDimensionTemplateAss."User Code");
+                   UserDimensionCoding.VALIDATE("Dimension Code","Dimension Code");
+                   UserDimensionCoding.VALIDATE("Dimension Value Code","Dimension Value");
+                   UserDimensionCoding.INSERT(TRUE);
+                   UserDimensionCoding.VALIDATE("Assigning Template","Template Code");
+                   UserDimensionCoding.MODIFY(TRUE);
+                 END;
+               UNTIL UserDimensionTemplateAss.NEXT = 0;
+             END;
+
+    OnDelete=VAR
+               UserDimensionCoding@1000000000 : Record 81015;
+             BEGIN
+               UserDimensionCoding.RESET;
+               UserDimensionCoding.SETRANGE("Dimension Code","Dimension Code");
+               UserDimensionCoding.SETRANGE("Dimension Value Code","Dimension Value");
+               UserDimensionCoding.SETRANGE("Assigning Template","Template Code");
+               IF UserDimensionCoding.FINDSET(TRUE) THEN UserDimensionCoding.DELETEALL(TRUE);
+             END;
+
+  }
+  FIELDS
+  {
+    { 1   ;   ;Template Code       ;Code20        ;TableRelation="Total Approval Dimension Tem".Code;
+                                                   NotBlank=Yes }
+    { 2   ;   ;Dimension Code      ;Code20        ;TableRelation=Dimension.Code }
+    { 3   ;   ;Dimension Value     ;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FIELD(Dimension Code)) }
+    { 4   ;   ;Default             ;Boolean        }
+  }
+  KEYS
+  {
+    {    ;Template Code,Dimension Code,Dimension Value;
+                                                   Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

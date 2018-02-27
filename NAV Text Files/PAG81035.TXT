@@ -2,15 +2,15 @@ OBJECT Page 81035 TA Dimension
 {
   OBJECT-PROPERTIES
   {
-    Date=25/10/17;
-    Time=13:26:58;
+    Date=19/10/17;
+    Time=12:04:24;
     Modified=Yes;
     Version List=TA1.0;
   }
   PROPERTIES
   {
-    CaptionML=[ENU=Total Approval Dimension;
-               ENG=Total Approval Dimension];
+    CaptionML=[ENU=Total Approval Dimensions;
+               ENG=Total Approval Dimensions];
     SourceTable=Table81018;
     PageType=List;
     AutoSplitKey=No;

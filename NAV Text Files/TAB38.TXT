@@ -2,8 +2,8 @@ OBJECT Table 38 Purchase Header
 {
   OBJECT-PROPERTIES
   {
-    Date=10/11/17;
-    Time=16:33:35;
+    Date=16/10/17;
+    Time=23:20:26;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -85,12 +85,8 @@ OBJECT Table 38 Purchase Header
                                                    OptionCaptionML=[ENU=Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order;
                                                                     ENG=Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order];
                                                    OptionString=Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order }
-    { 2   ;   ;Buy-from Vendor No. ;Code20        ;TableRelation=IF (Document Type=FILTER(Order),
-                                                                     Type of Supply Code=FILTER('')) Vendor.No. WHERE (Visible in Portal=FILTER(Yes))
-                                                                     ELSE IF (Document Type=FILTER(Order),
-                                                                              Type of Supply Code=FILTER(<>'')) Vendor.No. WHERE (Visible in Portal=FILTER(Yes),
-                                                                                                                                  Type of Supply Code=FIELD(Type of Supply Code))
-                                                                                                                                  ELSE IF (Document Type=FILTER(Invoice)) Vendor.No.;
+    { 2   ;   ;Buy-from Vendor No. ;Code20        ;TableRelation=Vendor.No. WHERE (Visible in Portal=FILTER(Yes),
+                                                                                   Type of Supply Code=FIELD(Type of Supply Code));
                                                    OnValidate=BEGIN
                                                                 InitRecOnVendUpdate;
                                                                 TESTFIELD(Status,Status::Open);
@@ -172,8 +168,7 @@ OBJECT Table 38 Purchase Header
                                                               END;
 
                                                    CaptionML=[ENU=Buy-from Vendor No.;
-                                                              ENG=Buy-from Vendor No.];
-                                                   Description=TA1.0 }
+                                                              ENG=Buy-from Vendor No.] }
     { 3   ;   ;No.                 ;Code20        ;OnValidate=BEGIN
                                                                 IF "No." <> xRec."No." THEN BEGIN
                                                                   PurchSetup.GET;
@@ -1750,6 +1745,7 @@ OBJECT Table 38 Purchase Header
     { 10501;  ;Type of Supply Code ;Code10        ;TableRelation="Type of Supply";
                                                    CaptionML=[ENU=Type of Supply Code;
                                                               ENG=Type of Supply Code] }
+    { 50010;  ;Barcode             ;Code20        ;Description=TES001 }
     { 81000;  ;Complete            ;Boolean       ;CaptionML=[ENU=Complete;
                                                               ENG=Complete];
                                                    Description=TA1.0 }
@@ -1855,14 +1851,14 @@ OBJECT Table 38 Purchase Header
                                                    Description=TA1.0 }
     { 81011;  ;Amount Received     ;Decimal       ;FieldClass=FlowField;
                                                    CalcFormula=Sum("Purch. Rcpt. Line"."Line Amount" WHERE (Order No.=FIELD(No.),
-                                                                                                            Posting Date=FIELD(Amount Invd Date Filter)));
+                                                                                                            Posting Date=FIELD(Date Filter)));
                                                    CaptionML=[ENU=Amount Received;
                                                               ENG=Amount Received];
                                                    Description=TA1.0;
                                                    Editable=No }
     { 81012;  ;Amount Invoiced     ;Decimal       ;FieldClass=FlowField;
                                                    CalcFormula=Sum("Purch. Inv. Line".Amount WHERE (Order No.=FIELD(No.),
-                                                                                                    Posting Date=FIELD(Amount Invd Date Filter)));
+                                                                                                    Posting Date=FIELD(Date Filter)));
                                                    CaptionML=[ENU=Amount Invoiced;
                                                               ENG=Amount Invoiced];
                                                    Description=TA1.0;
@@ -1884,7 +1880,6 @@ OBJECT Table 38 Purchase Header
     { 81016;  ;Document Path       ;Text250       ;ExtendedDatatype=URL;
                                                    Description=TA1.0;
                                                    Editable=No }
-    { 81017;  ;Amount Invd Date Filter;Date       ;FieldClass=FlowFilter }
   }
   KEYS
   {
@@ -3081,7 +3076,6 @@ OBJECT Table 38 Purchase Header
       END;
 
       SETRANGE("Date Filter",0D,WORKDATE - 1);
-      SETRANGE("Amount Invd Date Filter",0D,TODAY);
     END;
 
     PROCEDURE CalcInvDiscForHeader@45();

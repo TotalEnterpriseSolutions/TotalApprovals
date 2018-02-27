@@ -1,0 +1,63 @@
+OBJECT Table 81021 User Dimension Template Ass
+{
+  OBJECT-PROPERTIES
+  {
+    Date=04/10/17;
+    Time=09:17:10;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    OnInsert=VAR
+               UserDimensionCoding@1000000000 : Record 81015;
+               DimensionTemplateDetail@1000000001 : Record 81020;
+             BEGIN
+               DimensionTemplateDetail.RESET;
+               DimensionTemplateDetail.SETRANGE("Template Code","Template Code");
+               IF DimensionTemplateDetail.FINDSET(FALSE)THEN REPEAT
+                 IF NOT UserDimensionCoding.GET("User Code",DimensionTemplateDetail."Dimension Code",DimensionTemplateDetail."Dimension Value")
+                 THEN BEGIN
+                   UserDimensionCoding.INIT;
+                   UserDimensionCoding.VALIDATE("Portal User","User Code");
+                   UserDimensionCoding.VALIDATE("Dimension Code",DimensionTemplateDetail."Dimension Code");
+                   UserDimensionCoding.VALIDATE("Dimension Value Code",DimensionTemplateDetail."Dimension Value");
+                   UserDimensionCoding.INSERT(TRUE);
+                   UserDimensionCoding.VALIDATE("Assigning Template","Template Code");
+                   UserDimensionCoding.MODIFY(TRUE);
+                 END;
+               UNTIL DimensionTemplateDetail.NEXT = 0;
+             END;
+
+    OnDelete=VAR
+               UserDimensionCoding@1000000000 : Record 81015;
+             BEGIN
+               IF "Template Code" = '' THEN EXIT;
+               UserDimensionCoding.RESET;
+               UserDimensionCoding.SETRANGE("Portal User","User Code");
+               UserDimensionCoding.SETRANGE("Assigning Template","Template Code");
+               IF UserDimensionCoding.FINDSET(TRUE) THEN UserDimensionCoding.DELETEALL(TRUE);
+             END;
+
+  }
+  FIELDS
+  {
+    { 1   ;   ;User Code           ;Code50        ;TableRelation=User."User Name" }
+    { 2   ;   ;Template Code       ;Code20        ;TableRelation="Total Approval Dimension Tem".Code }
+    { 3   ;   ;Default             ;Boolean        }
+  }
+  KEYS
+  {
+    {    ;User Code,Template Code                 ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+
