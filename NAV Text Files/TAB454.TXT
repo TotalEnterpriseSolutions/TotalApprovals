@@ -2,10 +2,10 @@ OBJECT Table 454 Approval Entry
 {
   OBJECT-PROPERTIES
   {
-    Date=01/09/17;
-    Time=16:33:54;
+    Date=09/11/17;
+    Time=12:40:06;
     Modified=Yes;
-    Version List=NAVW110.00,TA1.0;
+    Version List=NAVW110.00,TA1.0,DCW110.00.00.4.50;
   }
   PROPERTIES
   {
@@ -58,39 +58,43 @@ OBJECT Table 454 Approval Entry
                                                                 IF (xRec.Status = Status::Created) AND (Status = Status::Open) THEN
                                                                   "Date-Time Sent for Approval" := CREATEDATETIME(TODAY,TIME);
 
-                                                                //TA1.0
-                                                                IF Status = Status::Canceled THEN "Approval Status" := xRec.Status ELSE "Approval Status" := Status;
+                                                                // TES DJA added this wrapper to exclude Expense approvals
+                                                                // requested by SC 09/11/2017
+                                                                IF "Approval Code" <> 'EXPENSE' THEN BEGIN
+                                                                  //TA1.0
+                                                                  IF Status = Status::Canceled THEN "Approval Status" := xRec.Status ELSE "Approval Status" := Status;
 
-                                                                CASE Status OF
-                                                                  Status::Open:
-                                                                    TotalCommunicationFunctions.RecordHandlerApprovals("Entry No.",0,2,FALSE);
-                                                                  Status::Approved:
-                                                                    BEGIN
-                                                                      //Clear Existing Approvals Emails
-                                                                      TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
-                                                                     END;
-                                                                  Status::"Proxy Approved":
-                                                                    BEGIN
-                                                                      //Clear Existing Approvals Emails
-                                                                      TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
-                                                                    END;
-                                                                  Status::Rejected:
-                                                                    BEGIN
-                                                                      //Clear Existing Approvals Emails
-                                                                      TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
-                                                                    END;
-                                                                  Status::Canceled:
-                                                                    BEGIN
-                                                                      //Clear Existing Approvals Emails
-                                                                      TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
-                                                                    END;
-                                                                  Status::Delegated:
-                                                                    BEGIN
-                                                                      //Clear Existing Approvals Emails
-                                                                      TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
-                                                                    END;
+                                                                  CASE Status OF
+                                                                    Status::Open:
+                                                                      TotalCommunicationFunctions.RecordHandlerApprovals("Entry No.",0,2,FALSE);
+                                                                    Status::Approved:
+                                                                      BEGIN
+                                                                        //Clear Existing Approvals Emails
+                                                                        TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
+                                                                       END;
+                                                                    Status::"Proxy Approved":
+                                                                      BEGIN
+                                                                        //Clear Existing Approvals Emails
+                                                                        TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
+                                                                      END;
+                                                                    Status::Rejected:
+                                                                      BEGIN
+                                                                        //Clear Existing Approvals Emails
+                                                                        TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
+                                                                      END;
+                                                                    Status::Canceled:
+                                                                      BEGIN
+                                                                        //Clear Existing Approvals Emails
+                                                                        TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
+                                                                      END;
+                                                                    Status::Delegated:
+                                                                      BEGIN
+                                                                        //Clear Existing Approvals Emails
+                                                                        TotalCommunicationFunctions.ClearApproval("Batch No.","Entry No.",Status);
+                                                                      END;
+                                                                  END;
+                                                                  //TA1.0
                                                                 END;
-                                                                //TA1.0
                                                               END;
 
                                                    CaptionML=[ENU=Status;
@@ -241,6 +245,59 @@ OBJECT Table 454 Approval Entry
                                                    CalcFormula=Lookup(User."Full Name" WHERE (User Name=FIELD(Raised By ID)));
                                                    Description=TA1.0;
                                                    Editable=No }
+    { 6085573;;Amount Incl. VAT    ;Decimal       ;CaptionML=ENU=Amount Incl. VAT }
+    { 6085574;;Amount Incl. VAT (LCY);Decimal     ;CaptionML=ENU=Amount Incl. VAT (LCY) }
+    { 6085575;;Original Approver ID;Code50        ;TableRelation=User."User Name";
+                                                   OnLookup=BEGIN
+                                                              UserMgt.LookupUserID("Original Approver ID");
+                                                            END;
+
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Original Approver ID }
+    { 6085576;;Temp. Entry Type    ;Option        ;CaptionML=ENU=Temp. Entry Type;
+                                                   OptionCaptionML=ENU=Normal,Out of Office Sharing,Normal Sharing;
+                                                   OptionString=Normal,Out of Office Sharing,Normal Sharing }
+    { 6085577;;Temp. Display Sorting;Integer      ;CaptionML=ENU=Temp. Display Sorting }
+    { 6085578;;Reminder Level      ;Integer       ;CaptionML=ENU=Reminder Level }
+    { 6085579;;Version No.         ;Integer       ;CaptionML=ENU=Version No. }
+    { 6085580;;Doc. No. Occurrence ;Integer       ;CaptionML=ENU=Doc. No. Occurrence }
+    { 6085581;;Approved using Pms. of;Option      ;CaptionML=ENU=Approved using Permissions;
+                                                   OptionCaptionML=ENU=Own,Owner,Both owner and own;
+                                                   OptionString=Approver,Owner,Both Approver and Owner }
+    { 6085582;;Owner Approver ID   ;Code50        ;TableRelation=User."User Name";
+                                                   OnLookup=BEGIN
+                                                              UserMgt.LookupUserID("Owner Approver ID");
+                                                            END;
+
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Owner Approver ID }
+    { 6085583;;Forced Approval     ;Boolean       ;CaptionML=ENU=Forced Approval;
+                                                   Editable=No }
+    { 6085787;;Delegated By User ID;Code50        ;TableRelation=User."User Name";
+                                                   OnLookup=BEGIN
+                                                              UserMgt.LookupUserID("Delegated By User ID");
+                                                            END;
+
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Delegated By User ID }
+    { 6085788;;Delegated To User ID;Code50        ;TableRelation=User."User Name";
+                                                   OnLookup=BEGIN
+                                                              UserMgt.LookupUserID("Delegated To User ID");
+                                                            END;
+
+                                                   TestTableRelation=No;
+                                                   CaptionML=ENU=Delegated To User ID }
+    { 6085789;;Remember Approver ID;Code50        ;TableRelation=User."User Name";
+                                                   OnLookup=BEGIN
+                                                              UserMgt.LookupUserID("Remember Approver ID");
+                                                            END;
+
+                                                   TestTableRelation=No;
+                                                   CaptionML=[ENU=Remember Approver ID;
+                                                              ENG=Remember Approver ID] }
+    { 6085790;;Advanced Approval   ;Boolean       ;CaptionML=ENU=Advanced Approval }
+    { 6085791;;Source Name         ;Text50        ;CaptionML=ENU=Source Name }
+    { 6085792;;Source No.          ;Code20        ;CaptionML=ENU=Source No. }
   }
   KEYS
   {
@@ -480,6 +537,11 @@ OBJECT Table 454 Approval Entry
     END;
 
     BEGIN
+    {
+      <DC>
+        Document Capture
+      </DC>
+    }
     END.
   }
 }

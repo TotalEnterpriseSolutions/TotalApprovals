@@ -1,0 +1,41 @@
+OBJECT Table 81009 Total Approval Workflow
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=15:29:16;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Code                ;Code20        ;TableRelation="Procurement Workflow"."Procurement Workflow" }
+    { 2   ;   ;Index               ;Integer        }
+    { 3   ;   ;No Range Applies    ;Boolean        }
+    { 4   ;   ;Value From          ;Decimal        }
+    { 5   ;   ;Value To            ;Decimal        }
+    { 6   ;   ;Approval Role       ;Code20        ;TableRelation="Total Approval Role".Code }
+    { 7   ;   ;Sequence            ;Integer        }
+    { 8   ;   ;Approve All Sequence Members;Boolean }
+    { 9   ;   ;Dimension           ;Code20        ;TableRelation=Dimension.Code }
+    { 10  ;   ;Approval Mandatory  ;Boolean        }
+    { 11  ;   ;Due Date            ;DateFormula    }
+  }
+  KEYS
+  {
+    {    ;Code,Index                              ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,47 @@
+OBJECT Table 81014 Approvals Buffer
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=13:22:22;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;ID                  ;Integer        }
+    { 2   ;   ;D1V                 ;Code20         }
+    { 3   ;   ;D2V                 ;Code20         }
+    { 4   ;   ;D3V                 ;Code20         }
+    { 5   ;   ;D4V                 ;Code20         }
+    { 6   ;   ;D5V                 ;Code20         }
+    { 7   ;   ;Catalogue           ;Code20         }
+    { 8   ;   ;Catalogue Line      ;Integer        }
+    { 9   ;   ;D1                  ;Code20         }
+    { 10  ;   ;D2                  ;Code20         }
+    { 11  ;   ;D3                  ;Code20         }
+    { 12  ;   ;D4                  ;Code20         }
+    { 13  ;   ;D5                  ;Code20         }
+    { 100 ;   ;Value Ex. VAT       ;Decimal        }
+    { 101 ;   ;Value Inc. VAT      ;Decimal        }
+    { 200 ;   ;Approval Template   ;Code20         }
+    { 201 ;   ;Batch No.           ;Code20         }
+  }
+  KEYS
+  {
+    {    ;ID                                      ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

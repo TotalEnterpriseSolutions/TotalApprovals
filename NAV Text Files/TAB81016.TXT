@@ -1,0 +1,38 @@
+OBJECT Table 81016 Template Approval Workflow
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=10:16:44;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Code                ;Code20        ;TableRelation="Approval Template".Code }
+    { 2   ;   ;Index               ;Integer        }
+    { 3   ;   ;Approval Role       ;Code20        ;TableRelation="Total Approval Role".Code }
+    { 4   ;   ;Sequence            ;Integer        }
+    { 5   ;   ;Approve All Sequence Members;Boolean }
+    { 6   ;   ;Dimension           ;Code20        ;TableRelation=Dimension.Code }
+    { 7   ;   ;Approval Mandatory  ;Boolean        }
+    { 8   ;   ;Due Date            ;DateFormula    }
+  }
+  KEYS
+  {
+    {    ;Code,Index                              ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

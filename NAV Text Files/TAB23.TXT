@@ -2,8 +2,8 @@ OBJECT Table 23 Vendor
 {
   OBJECT-PROPERTIES
   {
-    Date=29/08/17;
-    Time=14:06:57;
+    Date=26/10/17;
+    Time=11:15:00;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0,TC1.0;
   }
@@ -1405,12 +1405,12 @@ OBJECT Table 23 Vendor
 
       VendorWithoutQuote := CONVERTSTR(VendorText,'''','?');
 
-      Vendor.SETFILTER(Name,'''@' + VendorWithoutQuote + '''');
+      Vendor.SETFILTER(Name,'''@*' + VendorWithoutQuote + '''');
       IF Vendor.FINDFIRST THEN
         EXIT(Vendor."No.");
       Vendor.SETRANGE(Name);
 
-      VendorFilterFromStart := '''@' + VendorWithoutQuote + '*''';
+      VendorFilterFromStart := '''@*' + VendorWithoutQuote + '*''';
 
       Vendor.FILTERGROUP := -1;
       Vendor.SETFILTER("No.",VendorFilterFromStart);

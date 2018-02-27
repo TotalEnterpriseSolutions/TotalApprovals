@@ -1,0 +1,43 @@
+OBJECT Table 81008 Approval Template
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=13:06:31;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Code                ;Code20         }
+    { 2   ;   ;Description         ;Text30         }
+    { 3   ;   ;Type                ;Option        ;OptionString=Financial,Commercial }
+    { 4   ;   ;Person Resp. can't App. Proc.;Boolean }
+    { 5   ;   ;Raised By can't App. Proc.;Boolean  }
+    { 6   ;   ;Person Resp. can't App. Inv.;Boolean }
+    { 7   ;   ;Raised By can't App. Inv.;Boolean   }
+    { 8   ;   ;Approval by Level   ;Option        ;OptionString=All,Senior Only,Equal and Senior }
+    { 9   ;   ;Active              ;Boolean        }
+    { 10  ;   ;Active From         ;Date           }
+    { 11  ;   ;Active To           ;Date           }
+    { 12  ;   ;Value Threshold     ;Decimal        }
+    { 13  ;   ;Approval Mode       ;Option        ;OptionString=All,Equal and Senior Only,Senior Only }
+  }
+  KEYS
+  {
+    {    ;Code                                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

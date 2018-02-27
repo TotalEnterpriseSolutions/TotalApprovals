@@ -1,0 +1,52 @@
+OBJECT Table 81006 Additional Info Value
+{
+  OBJECT-PROPERTIES
+  {
+    Date=29/08/17;
+    Time=13:04:38;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Table ID            ;Integer       ;CaptionML=ENU=Table ID }
+    { 2   ;   ;Document Type       ;Option        ;CaptionML=ENU=Document Type;
+                                                   OptionCaptionML=ENU=Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order;
+                                                   OptionString=Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order }
+    { 3   ;   ;Document No.        ;Code20        ;CaptionML=ENU=Document No. }
+    { 4   ;   ;Line No.            ;Integer       ;CaptionML=ENU=Doc. Ref. No. }
+    { 12  ;   ;Field Code          ;Code20        ;CaptionML=[ENU=Field Code;
+                                                              ENG=Field Code];
+                                                   Editable=No }
+    { 20  ;   ;Field Value         ;Text250       ;OnValidate=VAR
+                                                                Date@1160040003 : Date;
+                                                                Dec@1160040002 : Decimal;
+                                                                Int@1160040001 : Integer;
+                                                                Bool@1160040004 : Boolean;
+                                                                DT@1000000000 : DateTime;
+                                                              BEGIN
+                                                              END;
+
+                                                   ValidateTableRelation=No;
+                                                   CaptionML=[ENU=Field Value;
+                                                              ENG=Field Value] }
+    { 21  ;   ;Mandatory           ;Boolean       ;Editable=No }
+  }
+  KEYS
+  {
+    {    ;Table ID                                ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

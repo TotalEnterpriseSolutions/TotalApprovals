@@ -1,0 +1,46 @@
+OBJECT Table 81022 Document Status
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=14:45:59;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Doc Type            ;Code20         }
+    { 2   ;   ;Doc. No.            ;Code20         }
+    { 3   ;   ;Procurment Type     ;Code20         }
+    { 4   ;   ;Date                ;Date           }
+    { 5   ;   ;Vendor              ;Code20         }
+    { 6   ;   ;Vendor Name         ;Text80         }
+    { 7   ;   ;Approval Status     ;Code30         }
+    { 8   ;   ;Amount Gross        ;Decimal        }
+    { 9   ;   ;Amount Net          ;Decimal        }
+    { 10  ;   ;GD1                 ;Code20         }
+    { 11  ;   ;GD2                 ;Code20         }
+    { 12  ;   ;Person Responsible  ;Code50         }
+    { 13  ;   ;Order Status        ;Text30         }
+    { 14  ;   ;External Document No.;Code35        }
+    { 15  ;   ;Completely Received ;Boolean        }
+  }
+  KEYS
+  {
+    {    ;Doc Type,Doc. No.                       ;Clustered=Yes }
+    {    ;Date                                     }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

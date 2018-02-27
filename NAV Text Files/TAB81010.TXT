@@ -1,0 +1,50 @@
+OBJECT Table 81010 Qualification Criteria
+{
+  OBJECT-PROPERTIES
+  {
+    Date=15/09/17;
+    Time=16:48:48;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Code                ;Code20        ;TableRelation="Approval Template".Code }
+    { 2   ;   ;Index               ;Integer        }
+    { 3   ;   ;Field ID            ;Integer        }
+    { 4   ;   ;Field Name          ;Text30        ;OnLookup=VAR
+                                                              LpgeFieldList@1000000000 : Page 6218;
+                                                              LrecField@1000000001 : Record 2000000041;
+                                                            BEGIN
+                                                              CLEAR(LpgeFieldList);
+                                                              LrecField.SETRANGE(TableNo,39);
+                                                              LpgeFieldList.SETTABLEVIEW(LrecField);
+                                                              LpgeFieldList.LOOKUPMODE := TRUE;
+                                                              IF LpgeFieldList.RUNMODAL = ACTION::LookupOK THEN BEGIN
+                                                                LpgeFieldList.GETRECORD(LrecField);
+                                                                VALIDATE("Field ID",LrecField."No.");
+                                                                VALIDATE("Field Name",LrecField.FieldName);
+                                                              END;
+                                                            END;
+                                                             }
+    { 5   ;   ;Parameter Value     ;Text30         }
+    { 6   ;   ;Operator            ;Option        ;OptionString=[ ,>,>=,<,<=,=,<>] }
+  }
+  KEYS
+  {
+    {    ;Code,Index                              ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

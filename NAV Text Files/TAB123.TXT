@@ -2,8 +2,8 @@ OBJECT Table 123 Purch. Inv. Line
 {
   OBJECT-PROPERTIES
   {
-    Date=19/09/17;
-    Time=12:15:04;
+    Date=20/11/17;
+    Time=17:08:10;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -398,6 +398,8 @@ OBJECT Table 123 Purch. Inv. Line
                                                    Editable=No }
     { 10501;  ;Reverse Charge      ;Decimal       ;CaptionML=[ENU=Reverse Charge;
                                                               ENG=Reverse Charge] }
+    { 50080;  ;Recovered VAT Rate Change;Boolean  ;Editable=No }
+    { 50085;  ;Recovered VAT Code  ;Code20        ;TableRelation="VAT Product Posting Group" }
     { 81004;  ;Catalogue Code      ;Code20        ;TableRelation=Catalogue.Code;
                                                    OnLookup=VAR
                                                               LrecDocumentTypeCatalogue@1000000003 : Record 81011;

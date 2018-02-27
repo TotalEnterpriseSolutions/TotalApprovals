@@ -3,7 +3,7 @@ OBJECT Table 38 Purchase Header
   OBJECT-PROPERTIES
   {
     Date=10/11/17;
-    Time=16:33:35;
+    Time=16:17:51;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -172,8 +172,7 @@ OBJECT Table 38 Purchase Header
                                                               END;
 
                                                    CaptionML=[ENU=Buy-from Vendor No.;
-                                                              ENG=Buy-from Vendor No.];
-                                                   Description=TA1.0 }
+                                                              ENG=Buy-from Vendor No.] }
     { 3   ;   ;No.                 ;Code20        ;OnValidate=BEGIN
                                                                 IF "No." <> xRec."No." THEN BEGIN
                                                                   PurchSetup.GET;
@@ -1750,6 +1749,7 @@ OBJECT Table 38 Purchase Header
     { 10501;  ;Type of Supply Code ;Code10        ;TableRelation="Type of Supply";
                                                    CaptionML=[ENU=Type of Supply Code;
                                                               ENG=Type of Supply Code] }
+    { 50010;  ;Barcode             ;Code20        ;Description=TES001 }
     { 81000;  ;Complete            ;Boolean       ;CaptionML=[ENU=Complete;
                                                               ENG=Complete];
                                                    Description=TA1.0 }
@@ -2986,6 +2986,10 @@ OBJECT Table 38 Purchase Header
 
             DimMgt.UpdateGlobalDimFromDimSetID(
               PurchLine."Dimension Set ID",PurchLine."Shortcut Dimension 1 Code",PurchLine."Shortcut Dimension 2 Code");
+
+            //TES VAT from CC
+            PurchLine.VATFromCostCentre(TRUE);
+
             PurchLine.MODIFY;
           END;
         UNTIL PurchLine.NEXT = 0;

@@ -1,0 +1,101 @@
+OBJECT Table 81015 User Dimension Coding
+{
+  OBJECT-PROPERTIES
+  {
+    Date=04/10/17;
+    Time=09:18:12;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    OnInsert=BEGIN
+               "Global Dimension No." := GetGlobalDimensionNo;
+             END;
+
+  }
+  FIELDS
+  {
+    { 1   ;   ;Portal User         ;Code50        ;TableRelation=User."User Name" }
+    { 2   ;   ;Dimension Code      ;Code20        ;TableRelation=Dimension.Code;
+                                                   OnValidate=BEGIN
+                                                                UpdateDimensionDescription;
+                                                              END;
+
+                                                   CaptionML=CYM=cod dimensiwn }
+    { 3   ;   ;Dimension Value Code;Code20        ;TableRelation="Dimension Value".Code WHERE (Dimension Code=FIELD(Dimension Code));
+                                                   OnValidate=BEGIN
+                                                                UpdateDimensionDescription;
+                                                              END;
+
+                                                   CaptionML=CYM=Cod gwerth dimensiwn }
+    { 4   ;   ;Dimension Value Description;Text50 ;CaptionML=CYM=Disgrifiad gwerth dimensiwn;
+                                                   Editable=No }
+    { 5   ;   ;Dimension Description;Text100       }
+    { 6   ;   ;Global Dimension No.;Integer       ;CaptionML=[ENU=Global Dimension No.;
+                                                              ENG=Global Dimension No.] }
+    { 7   ;   ;Assigning Template  ;Code20        ;TableRelation="Total Approval Dimension Tem".Code }
+    { 8   ;   ;Default Dimension   ;Boolean       ;OnValidate=VAR
+                                                                UserDimensionCoding@1000000000 : Record 81015;
+                                                              BEGIN
+                                                                IF "Default Dimension" THEN BEGIN
+                                                                  UserDimensionCoding.RESET;
+                                                                  UserDimensionCoding.SETRANGE("Portal User","Portal User");
+                                                                  UserDimensionCoding.SETRANGE("Dimension Code","Dimension Code");
+                                                                  UserDimensionCoding.SETFILTER("Dimension Value Code",'<>%1',"Dimension Value Code");
+                                                                  IF UserDimensionCoding.FINDFIRST THEN UserDimensionCoding.MODIFYALL("Default Dimension",FALSE);
+                                                                END;
+                                                              END;
+                                                               }
+  }
+  KEYS
+  {
+    {    ;Portal User,Dimension Code,Dimension Value Code;
+                                                   Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+    { 1   ;DropDown            ;Dimension Value Code,Dimension Value Description }
+  }
+  CODE
+  {
+
+    LOCAL PROCEDURE UpdateDimensionDescription@1000000000();
+    VAR
+      DimensionValue@1000000000 : Record 349;
+    BEGIN
+      IF DimensionValue.GET("Dimension Code","Dimension Value Code") THEN "Dimension Value Description" := DimensionValue.Name ELSE "Dimension Value Description" := '';
+    END;
+
+    LOCAL PROCEDURE GetGlobalDimensionNo@8() : Integer;
+    VAR
+      GeneralLedgerSetup@1000 : Record 98;
+    BEGIN
+      GeneralLedgerSetup.GET;
+      CASE "Dimension Code" OF
+        GeneralLedgerSetup."Global Dimension 1 Code":
+          EXIT(1);
+        GeneralLedgerSetup."Global Dimension 2 Code":
+          EXIT(2);
+        GeneralLedgerSetup."Shortcut Dimension 3 Code":
+          EXIT(3);
+        GeneralLedgerSetup."Shortcut Dimension 4 Code":
+          EXIT(4);
+        GeneralLedgerSetup."Shortcut Dimension 5 Code":
+          EXIT(5);
+        GeneralLedgerSetup."Shortcut Dimension 6 Code":
+          EXIT(6);
+        GeneralLedgerSetup."Shortcut Dimension 7 Code":
+          EXIT(7);
+        GeneralLedgerSetup."Shortcut Dimension 8 Code":
+          EXIT(8);
+        ELSE
+          EXIT(0);
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

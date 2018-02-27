@@ -2,8 +2,8 @@ OBJECT Table 81000 Total Approval Setup
 {
   OBJECT-PROPERTIES
   {
-    Date=10/11/17;
-    Time=16:59:24;
+    Date=09/11/17;
+    Time=16:06:25;
     Modified=Yes;
     Version List=TA1.0;
   }

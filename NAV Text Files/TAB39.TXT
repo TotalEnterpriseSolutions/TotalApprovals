@@ -2,8 +2,8 @@ OBJECT Table 39 Purchase Line
 {
   OBJECT-PROPERTIES
   {
-    Date=22/09/17;
-    Time=12:09:38;
+    Date=23/11/17;
+    Time=17:06:45;
     Modified=Yes;
     Version List=NAVW110.00.00.16585,NAVGB10.00.00.16585,TA1.0;
   }
@@ -360,6 +360,10 @@ OBJECT Table 39 Purchase Line
                                                                       Description := GLAcc.Name;
                                                                       "Gen. Prod. Posting Group" := GLAcc."Gen. Prod. Posting Group";
                                                                       "VAT Prod. Posting Group" := GLAcc."VAT Prod. Posting Group";
+
+                                                                      //TES VAT Posting
+                                                                      VATFromCostCentre(FALSE);
+
                                                                       "Tax Group Code" := GLAcc."Tax Group Code";
                                                                       "Allow Invoice Disc." := FALSE;
                                                                       "Allow Item Charge Assignment" := FALSE;
@@ -1737,6 +1741,12 @@ OBJECT Table 39 Purchase Line
                                                    CaptionML=[ENU=A. Rcd. Not Inv. Ex. VAT (LCY);
                                                               ENG=A. Rcd. Not Inv. Ex. VAT (LCY)] }
     { 480 ;   ;Dimension Set ID    ;Integer       ;TableRelation="Dimension Set Entry";
+                                                   OnValidate=BEGIN
+                                                                // TA1.0 - START
+                                                                DimMgt.UpdateGlobalDimFromDimSetID("Dimension Set ID","Shortcut Dimension 1 Code","Shortcut Dimension 2 Code");
+                                                                // TA1.0 - END
+                                                              END;
+
                                                    OnLookup=BEGIN
                                                               ShowDimensions;
                                                             END;
@@ -2719,6 +2729,8 @@ OBJECT Table 39 Purchase Line
     { 10500;  ;Reverse Charge Item ;Boolean       ;CaptionML=[ENU=Reverse Charge Item;
                                                               ENG=Reverse Charge Item];
                                                    Editable=No }
+    { 50080;  ;Recovered VAT Rate Change;Boolean  ;Editable=No }
+    { 50085;  ;Recovered VAT Code  ;Code20        ;TableRelation="VAT Product Posting Group" }
     { 81000;  ;Original Order Qty. ;Decimal       ;Description=TA1.0 }
     { 81001;  ;Approval Batch      ;Code20        ;Description=TA1.0 }
     { 81002;  ;Line Source         ;Option        ;OptionCaptionML=[ENU=" ,Portal";
@@ -2839,6 +2851,7 @@ OBJECT Table 39 Purchase Line
                                                                                                     Order Line No.=FIELD(Line No.),
                                                                                                     Posting Date=FIELD(Date Filter)));
                                                    CaptionML=[ENU=Amount Invoiced;
+                                                              CYM=[ENG]]Amount Invoiced;
                                                               ENG=Amount Invoiced];
                                                    Description=TA1.0;
                                                    Editable=No }
@@ -5557,6 +5570,52 @@ OBJECT Table 39 Purchase Line
 
     LOCAL PROCEDURE "***TES-***"@1000000002();
     BEGIN
+    END;
+
+    PROCEDURE VATFromCostCentre@1000000004(ValidateVAT@1000000000 : Boolean);
+    VAR
+      DimValue@1000000001 : Record 349;
+      GLAccount@1000000002 : Record 15;
+      VATPostingSetup@1000000003 : Record 325;
+      VATPostingSetup2@1000000004 : Record 325;
+    BEGIN
+      //TES VAT Posting
+
+      IF Type <> Type::"G/L Account" THEN EXIT;
+
+      IF GLAccount.GET("No.") THEN BEGIN
+        DimValue.RESET;
+        DimValue.SETRANGE("Global Dimension No.",2);
+        DimValue.SETRANGE(Code,"Shortcut Dimension 2 Code");
+        IF DimValue.FINDFIRST THEN BEGIN
+          IF (DimValue."VAT Product Posting Group" <> '') AND (DimValue."Use VAT Recovery") THEN BEGIN
+
+            IF (VATPostingSetup.GET("VAT Bus. Posting Group",DimValue."VAT Product Posting Group")) AND (VATPostingSetup2.GET("VAT Bus. Posting Group",GLAccount."VAT Prod. Posting Group")) THEN BEGIN
+
+              IF VATPostingSetup."VAT %" < VATPostingSetup2."VAT %" THEN BEGIN
+
+                "Recovered VAT Rate Change" := TRUE;
+                "Recovered VAT Code" := GLAccount."VAT Prod. Posting Group";
+                IF NOT ValidateVAT THEN
+                  "VAT Prod. Posting Group" := DimValue."VAT Product Posting Group"
+                ELSE VALIDATE("VAT Prod. Posting Group",DimValue."VAT Product Posting Group")
+
+                END;
+            END;
+
+          END
+          ELSE BEGIN
+
+            "Recovered VAT Rate Change" := FALSE;
+            "Recovered VAT Code" := '';
+            IF NOT ValidateVAT THEN
+              "VAT Prod. Posting Group" := GLAccount."VAT Prod. Posting Group"
+            ELSE VALIDATE("VAT Prod. Posting Group",GLAccount."VAT Prod. Posting Group")
+
+          END;
+
+        END;
+      END;
     END;
 
     BEGIN
