@@ -1,0 +1,225 @@
+OBJECT Page 81018 TA Posted Purch. Inv Sub
+{
+  OBJECT-PROPERTIES
+  {
+    Date=12/07/17;
+    Time=09:57:57;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=[ENU=Lines;
+               ENG=Lines];
+    LinksAllowed=No;
+    SourceTable=Table123;
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+    OnAfterGetRecord=VAR
+                       GbooIsiMileageLine@1000000000 : Boolean;
+                     BEGIN
+                       //GbooIsiMileageLine := IsMileageLine;
+                     END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           DocumentTotals.CalculatePostedPurchInvoiceTotals(TotalPurchInvHeader,VATAmount,Rec);
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 1000000002;  ;ActionContainer;
+                      ActionContainerType=ActionItems }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1   ;1   ;Group     ;
+                GroupType=Repeater }
+
+    { 2   ;2   ;Field     ;
+                SourceExpr=Type }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="No." }
+
+    { 62  ;2   ;Field     ;
+                CaptionML=[ENU=Cross-Reference No.;
+                           CYM=Rhif Traws-Cyfeirnod;
+                           ENG=Cross-Reference No.];
+                SourceExpr="Cross-Reference No.";
+                Visible=FALSE }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="IC Partner Code";
+                Visible=FALSE }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Variant Code";
+                Visible=FALSE }
+
+    { 1000000000;2;Field  ;
+                SourceExpr="VAT Prod. Posting Group" }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Description }
+
+    { 38  ;2   ;Field     ;
+                SourceExpr="Return Reason Code";
+                Visible=FALSE }
+
+    { 8   ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr=Quantity }
+
+    { 30  ;2   ;Field     ;
+                SourceExpr="Unit of Measure Code" }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Unit of Measure";
+                Visible=FALSE }
+
+    { 12  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Direct Unit Cost" }
+
+    { 54  ;2   ;Field     ;
+                SourceExpr="Indirect Cost %";
+                Visible=FALSE }
+
+    { 50  ;2   ;Field     ;
+                SourceExpr="Unit Cost (LCY)";
+                Visible=FALSE }
+
+    { 52  ;2   ;Field     ;
+                SourceExpr="Unit Price (LCY)" }
+
+    { 64  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Line Amount" }
+
+    { 16  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Line Discount %" }
+
+    { 44  ;2   ;Field     ;
+                SourceExpr="Line Discount Amount";
+                Visible=FALSE }
+
+    { 42  ;2   ;Field     ;
+                SourceExpr="Allow Invoice Disc.";
+                Visible=FALSE }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Job No.";
+                Visible=true }
+
+    { 1000000001;2;Field  ;
+                SourceExpr="Job Task No." }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Insurance No.";
+                Visible=FALSE }
+
+    { 28  ;2   ;Field     ;
+                SourceExpr="Budgeted FA No.";
+                Visible=FALSE }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="FA Posting Type";
+                Visible=FALSE }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="Depr. until FA Posting Date";
+                Visible=FALSE }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Depreciation Book Code";
+                Visible=FALSE }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Depr. Acquisition Cost";
+                Visible=FALSE }
+
+    { 36  ;2   ;Field     ;
+                SourceExpr="Appl.-to Item Entry";
+                Visible=FALSE }
+
+    { 60  ;2   ;Field     ;
+                SourceExpr="Shortcut Dimension 1 Code";
+                Visible=FALSE }
+
+    { 58  ;2   ;Field     ;
+                SourceExpr="Shortcut Dimension 2 Code";
+                Visible=FALSE }
+
+    { 31  ;1   ;Group     ;
+                GroupType=Group }
+
+    { 25  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 23  ;3   ;Field     ;
+                Name=Invoice Discount Amount;
+                CaptionML=[ENU=Invoice Discount Amount;
+                           CYM=Swm Disgownt Anfoneb;
+                           ENG=Invoice Discount Amount];
+                SourceExpr=TotalPurchInvHeader."Invoice Discount Amount";
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                CaptionClass=DocumentTotals.GetInvoiceDiscAmountWithVATCaption(TotalPurchInvHeader."Prices Including VAT");
+                Editable=FALSE }
+
+    { 7   ;2   ;Group     ;
+                GroupType=Group }
+
+    { 9   ;3   ;Field     ;
+                Name=Total Amount Excl. VAT;
+                DrillDown=No;
+                CaptionML=[ENU=Total Amount Excl. VAT;
+                           CYM=Cyfanswm Swm Heb gynnwys TAW;
+                           ENG=Total Amount Excl. VAT];
+                SourceExpr=TotalPurchInvHeader.Amount;
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                Editable=FALSE }
+
+    { 3   ;3   ;Field     ;
+                Name=Total VAT Amount;
+                CaptionML=[ENU=Total VAT;
+                           CYM=Cyfanswm TAW;
+                           ENG=Total VAT];
+                SourceExpr=VATAmount;
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                Editable=FALSE }
+
+    { 5   ;3   ;Field     ;
+                Name=Total Amount Incl. VAT;
+                CaptionML=[ENU=Total Amount Incl. VAT;
+                           CYM=Cyfanswm Swm Gan gynnwys TAW;
+                           ENG=Total Amount Incl. VAT];
+                SourceExpr=TotalPurchInvHeader."Amount Including VAT";
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                Editable=FALSE;
+                Style=Strong;
+                StyleExpr=TRUE }
+
+  }
+  CODE
+  {
+    VAR
+      TotalPurchInvHeader@1002 : Record 122;
+      DocumentTotals@1001 : Codeunit 57;
+      VATAmount@1000 : Decimal;
+      GbooIsiMileageLine@1000000000 : Boolean;
+
+    BEGIN
+    END.
+  }
+}
+

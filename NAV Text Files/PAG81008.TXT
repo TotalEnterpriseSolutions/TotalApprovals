@@ -1,0 +1,94 @@
+OBJECT Page 81008 Catalogue Lines LP
+{
+  OBJECT-PROPERTIES
+  {
+    Date=21/09/17;
+    Time=23:35:04;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table81003;
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+    OnAfterGetRecord=BEGIN
+                       GbooBold := FALSE;
+                       IF (Type=0)AND("No." ='')THEN GbooBold := TRUE;
+                     END;
+
+    ActionList=ACTIONS
+    {
+      { 1000000008;  ;ActionContainer;
+                      Name=<Action1900000004>;
+                      ActionContainerType=ActionItems }
+      { 1000000005;1 ;Action    ;
+                      Name=<Action1902027204>;
+                      CaptionML=[ENU=Details;
+                                 ENG=Details];
+                      RunObject=Page 81007;
+                      RunPageOnRec=Yes;
+                      RunPageLink=Catalogue Code=FIELD(Catalogue Code),
+                                  Index=FIELD(Index) }
+    }
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr=Index }
+
+    { 1000000003;2;Field  ;
+                SourceExpr="Parent Index";
+                Visible=FALSE }
+
+    { 1000000007;2;Field  ;
+                SourceExpr=Type;
+                Visible=false }
+
+    { 1000000009;2;Field  ;
+                SourceExpr="No." }
+
+    { 1000000004;2;Field  ;
+                SourceExpr=Description;
+                Style=Standard;
+                StyleExpr=GbooBold }
+
+    { 1000000006;2;Field  ;
+                SourceExpr="Header Line" }
+
+    { 1000000010;2;Field  ;
+                SourceExpr=Price;
+                Visible=false }
+
+    { 1000000014;2;Field  ;
+                CaptionML=ENU=Total Approvals Description;
+                SourceExpr="Total Fiancials Description";
+                Visible=false }
+
+    { 1000000011;2;Field  ;
+                SourceExpr="Default VAT" }
+
+    { 1000000019;2;Field  ;
+                SourceExpr="Dimension Setup" }
+
+    { 1000000016;2;Field  ;
+                SourceExpr="Commercial Filter" }
+
+  }
+  CODE
+  {
+    VAR
+      GbooBold@1000000000 : Boolean INDATASET;
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,52 @@
+OBJECT Page 81048 TA Dim Set Entry Fact
+{
+  OBJECT-PROPERTIES
+  {
+    Date=22/02/17;
+    Time=15:05:26;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    SourceTable=Table480;
+    PageType=ListPart;
+  }
+  CONTROLS
+  {
+    { 1000000005;;Container;
+                ContainerType=ContentArea }
+
+    { 1000000006;1;Group  ;
+                GroupType=Repeater }
+
+    { 1000000000;2;Field  ;
+                CaptionML=[ENU=Dimension Code;
+                           CYM=Cod Dimensiwn;
+                           ENG=Dimension Code];
+                SourceExpr="Dimension Code" }
+
+    { 1000000001;2;Field  ;
+                CaptionML=[ENU=Dimension Value Code;
+                           CYM=Cod Gwerth Dimensiwn;
+                           ENG=Dimension Value Code];
+                SourceExpr="Dimension Value Code" }
+
+    { 1000000004;2;Field  ;
+                CaptionML=[ENU=Dimension Value Name;
+                           CYM=Enw Gwerth Dimensiwn;
+                           ENG=Dimension Value Name];
+                SourceExpr="Dimension Value Name" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

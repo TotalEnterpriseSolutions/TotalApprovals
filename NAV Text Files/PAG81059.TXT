@@ -1,0 +1,342 @@
+OBJECT Page 81059 My Cost Centres
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=15:13:21;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=My Costcentres;
+               CYM=Fy Canolfannau Costau;
+               ENG=My Costcentres];
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    SourceTable=Table81015;
+    PageType=ListPart;
+    OnInit=BEGIN
+             CLEAR(GtxtDimDesc);
+           END;
+
+    OnOpenPage=VAR
+                 LcduPortalFns@1000000000 : Codeunit 81001;
+                 LrecGLSetup@1000000001 : Record 98;
+               BEGIN
+                 //SETRANGE("Portal User",LrecProcFunct.StripDomain(USERID));
+                 SETRANGE("Portal User",USERID);
+                 LrecGLSetup.GET();
+                 SETRANGE("Dimension Code",LrecGLSetup."Global Dimension 1 Code");
+
+                 //GtxtDepFilter := LcduPortalFns.BuildDimensionFilter('DEPARTMENT');
+               END;
+
+    OnAfterGetRecord=VAR
+                       LrecDimensionValue@1000000000 : Record 349;
+                     BEGIN
+                       GbooDefault := GetDefault;
+                       GbooDefShow := TRUE;
+
+                       CLEAR(GtxtDimDesc);
+                       IF LrecDimensionValue.GET("Dimension Code","Dimension Value Code") THEN GtxtDimDesc := COPYSTR(LrecDimensionValue.Name,1,50);
+                       SetValues();
+                     END;
+
+    OnInsertRecord=BEGIN
+                     GbooDefShow := TRUE;
+                   END;
+
+    OnModifyRecord=BEGIN
+                     GbooDefault := GetDefault;
+                   END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr="Dimension Code";
+                Visible=false }
+
+    { 1000000003;2;Field  ;
+                DrillDown=No;
+                SourceExpr="Dimension Value Code";
+                Visible=false;
+                OnDrillDown=VAR
+                              LrecGL@1000000000 : Record 17;
+                            BEGIN
+
+                              CurrPage.UPDATE(FALSE);
+                              GrecGL.RESET;
+                              GrecGL.SETRANGE("Global Dimension 1 Code","Dimension Value Code");
+                              GrecGL.SETCURRENTKEY("Posting Date","G/L Account No.","Dimension Set ID");
+                              PAGE.RUN(20,GrecGL);
+                            END;
+                             }
+
+    { 1000000008;2;Field  ;
+                Name=GtxtDimDesc;
+                CaptionML=[ENU=Costcentre;
+                           CYM=Canolfan Gostau;
+                           ENG=Costcentre];
+                SourceExpr=GtxtDimDesc }
+
+    { 1000000004;2;Field  ;
+                CaptionML=[ENU=Orders;
+                           CYM=Archebion;
+                           ENG=Orders];
+                SourceExpr=GintOrders;
+                OnDrillDown=VAR
+                              LrecItem@1000000000 : Record 27;
+                            BEGIN
+                              DrillValue(0);
+                              SetValues();
+                            END;
+                             }
+
+    { 1000000005;2;Field  ;
+                CaptionML=[ENU=Invoices;
+                           CYM=Anfoneb;
+                           ENG=Invoices];
+                SourceExpr=GintInvoices;
+                OnDrillDown=BEGIN
+                              DrillValue(1);
+                              SetValues();
+                            END;
+                             }
+
+    { 1000000009;2;Field  ;
+                CaptionML=[ENU=Credits;
+                           CYM=Credydau;
+                           ENG=Credits];
+                SourceExpr=GintCredits;
+                OnDrillDown=BEGIN
+                              DrillValue(2);
+                              SetValues();
+                            END;
+                             }
+
+  }
+  CODE
+  {
+    VAR
+      GbooDefault@1000000000 : Boolean;
+      GbooDefShow@1000000001 : Boolean INDATASET;
+      GtxtDimDesc@1000000002 : Text[50];
+      GrecGL@1000000003 : Record 17;
+      GintOrders@1000000004 : Integer;
+      GintInvoices@1000000005 : Integer;
+      GintCredits@1000000006 : Integer;
+      GintVendors@1000000007 : Integer;
+      GtxtDepFilter@1000000008 : Text;
+
+    PROCEDURE GetDefault@1000000000() : Boolean;
+    BEGIN
+    END;
+
+    PROCEDURE SetDefaultValue@1000000001(VbooSet@1000000000 : Boolean);
+    BEGIN
+    END;
+
+    LOCAL PROCEDURE SetValues@1000000002();
+    VAR
+      LrecOrder@1000000001 : Record 38;
+      LrecPINV@1000000002 : Record 122;
+      LrecPCred@1000000003 : Record 124;
+    BEGIN
+      //Orders
+      {
+      CLEAR(GintOrders);
+      LrecDocument.RESET;
+      LrecDocument.SETFILTER(Status,'%1|%2',LrecDocument.Status::"1",LrecDocument.Status::"3");
+      LrecDocument.SETRANGE("Dimension 1 Value","Dimension Value Code");
+      LrecDocument.SETFILTER("Dimension 2 Value",GtxtDepFilter);
+      }
+      LrecOrder.RESET;
+      LrecOrder.SETRANGE("Document Type",LrecOrder."Document Type"::Order);
+      LrecOrder.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+      LrecOrder.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+      LrecOrder.SETFILTER(Status,'%1|%2',LrecOrder.Status::"Pending Approval",LrecOrder.Status::Released);
+      LrecOrder.SETRANGE(Deleted,FALSE);
+      GintOrders := LrecOrder.COUNT;
+
+
+      //Invoices
+      CLEAR(GintInvoices);
+      LrecPINV.RESET;
+      LrecPINV.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+      LrecPINV.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+      LrecOrder.RESET;
+      LrecOrder.SETRANGE("Document Type",LrecOrder."Document Type"::Invoice);
+      LrecOrder.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+      LrecOrder.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+      //LrecOrder.SETRANGE(Status,LrecOrder.Status::Released);
+      //LrecOrder.SETRANGE(Deleted,FALSE);
+      GintInvoices := LrecPINV.COUNT + LrecOrder.COUNT;
+
+      //Credits
+      CLEAR(GintCredits);
+      LrecPCred.RESET;
+      LrecPCred.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+      LrecPCred.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+      LrecOrder.RESET;
+      LrecOrder.SETRANGE("Document Type",LrecOrder."Document Type"::"Credit Memo");
+      LrecOrder.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+      LrecOrder.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+      //LrecOrder.SETRANGE(Status,LrecOrder.Status::Released);
+      //LrecOrder.SETRANGE(Deleted,FALSE);
+      GintCredits := LrecPCred.COUNT + LrecOrder.COUNT;
+    END;
+
+    PROCEDURE DrillValue@1000000010(VoptType@1000000000 : 'Orders,Invoices,Credits');
+    VAR
+      LrecOrder@1000000003 : Record 38;
+      LrecOrderLines@1000000007 : Record 39;
+      LrecPINV@1000000002 : Record 122;
+      LrecPCred@1000000001 : Record 124;
+      LrecDocStatusTEMP@1000000005 : TEMPORARY Record 81022;
+      LcodPersonResp@1000000006 : Code[50];
+      LtxtOrderState@1000000008 : Text;
+      LcodOrderNo@1000000004 : Code[30];
+    BEGIN
+      LrecDocStatusTEMP.DELETEALL;
+      CASE VoptType OF
+        VoptType::Orders:
+            BEGIN
+              //Orders
+              LrecOrder.RESET;
+              LrecOrder.SETRANGE("Document Type",LrecOrder."Document Type"::Order);
+              //LrecOrder.SETRANGE(Status,LrecOrder.Status::Released);
+              LrecOrder.SETFILTER(Status,'%1|%2',LrecOrder.Status::Released,LrecOrder.Status::"Pending Approval");
+              LrecOrder.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+              //LrecOrder.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+              IF LrecOrder.FINDFIRST THEN REPEAT
+                CLEAR(LcodPersonResp);
+                LrecOrderLines.RESET;
+                LrecOrderLines.SETRANGE("Document Type",LrecOrder."Document Type");
+                LrecOrderLines.SETRANGE("No.",LrecOrder."No.");
+                CLEAR(LtxtOrderState);
+                {
+                IF LrecOrderlines.FINDFIRST THEN REPEAT
+                  LrecOrderLines.CALCFIELDS("Quantity Invoiced");
+                  IF LrecOrderLines."Quantity Invoiced" <> 0 THEN LtxtOrderState := 'Invoiced'
+                UNTIL (LrecOrderLines.NEXT = 0) OR (LrecOrderLines."Quantity Invoiced" > 0);
+                }
+                IF LrecOrder."Person Responsible" <> '' THEN LcodPersonResp := LrecOrder."Person Responsible";// ELSE LcodPersonResp := LrecOrder."Person Responsible";
+                LrecOrder.CALCFIELDS("Amount Including VAT",LrecOrder.Amount,LrecOrder."Completely Received");
+                IF LrecOrder.Status = LrecOrder.Status::Released THEN
+                  LcodOrderNo := LrecOrder."No." ELSE LcodOrderNo := LrecOrder."Unapproved No.";
+                BuildTempRec(FORMAT(LrecOrder."Document Type"),LcodOrderNo,LrecOrder."Procurement Workflow",LrecOrder."Buy-from Vendor No.",FORMAT(LrecOrder.Status),LrecOrder."Order Date",LrecOrder."Shortcut Dimension 1 Code",
+                  LrecOrder."Shortcut Dimension 2 Code", LrecOrder."Amount Including VAT",LrecOrder.Amount,LcodPersonResp,LrecOrder."Unapproved No.",'',LtxtOrderState,'',LrecOrder."Completely Received",LrecDocStatusTEMP);
+              UNTIL LrecOrder.NEXT = 0;
+            END;
+        VoptType::Invoices:
+          BEGIN
+            //Invoices
+            CLEAR(GintInvoices);
+            LrecPINV.RESET;
+            LrecPINV.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+            //LrecPINV.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+            IF LrecPINV.FINDFIRST THEN REPEAT
+              LrecPINV.CALCFIELDS("Amount Including VAT",LrecPINV.Amount);
+              BuildTempRec('INVOICE',LrecPINV."No.",LrecPINV."Portal Document Type",LrecPINV."Buy-from Vendor No.",'Posted',LrecPINV."Posting Date",LrecPINV."Shortcut Dimension 1 Code",
+                LrecPINV."Shortcut Dimension 2 Code",LrecPINV."Amount Including VAT",LrecPINV.Amount,LrecPINV."Person Responsible",'',LrecPINV."Purchase Order No.",'',LrecPINV."Vendor Invoice No.",FALSE,LrecDocStatusTEMP);
+            UNTIL LrecPINV.NEXT = 0;
+            LrecOrder.RESET;
+            LrecOrder.SETRANGE("Document Type",LrecOrder."Document Type"::Invoice);
+            LrecOrder.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+            //LrecOrder.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+            IF LrecOrder.FINDFIRST THEN REPEAT
+                CLEAR(LcodPersonResp);
+                IF LrecOrder."Person Responsible" <> '' THEN LcodPersonResp := LrecOrder."Person Responsible";// ELSE LcodPersonResp := LrecOrder."Person Responsible";
+                LrecOrder.CALCFIELDS("Amount Including VAT",LrecOrder.Amount);
+                BuildTempRec(FORMAT(LrecOrder."Document Type"),LrecOrder."No.",LrecOrder."Procurement Workflow",LrecOrder."Buy-from Vendor No.",FORMAT(LrecOrder.Status),LrecOrder."Order Date",LrecOrder."Shortcut Dimension 1 Code",
+                  LrecOrder."Shortcut Dimension 2 Code",LrecOrder."Amount Including VAT",LrecOrder.Amount,LcodPersonResp,'',LrecOrder."Purchase Order No.",'',LrecOrder."Vendor Invoice No.",FALSE,LrecDocStatusTEMP);
+              UNTIL LrecOrder.NEXT = 0;
+          END;
+        VoptType::Credits:
+          BEGIN
+            //Credits
+            CLEAR(GintCredits);
+            LrecPCred.RESET;
+            LrecPCred.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+            //LrecPCred.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+            IF LrecPCred.FINDFIRST THEN REPEAT
+              LrecPCred.CALCFIELDS("Amount Including VAT",LrecPCred.Amount);
+              BuildTempRec('CREDIT MEMO',LrecPCred."No.",LrecPCred."Portal Document Type",LrecPCred."Buy-from Vendor No.",'Posted',LrecPCred."Posting Date",LrecPCred."Shortcut Dimension 1 Code",
+                LrecPCred."Shortcut Dimension 2 Code",LrecPCred."Amount Including VAT",LrecPCred.Amount,LrecPCred."Person Responsible",'',LrecPCred."Purchase Order No.",'',LrecPCred."Vendor Cr. Memo No.",FALSE,LrecDocStatusTEMP);
+            UNTIL LrecPCred.NEXT = 0;
+            LrecOrder.RESET;
+            LrecOrder.SETRANGE("Document Type",LrecOrder."Document Type"::"Credit Memo");
+            LrecOrder.SETRANGE("Shortcut Dimension 1 Code","Dimension Value Code");
+            //LrecOrder.SETFILTER("Shortcut Dimension 2 Code",GtxtDepFilter);
+            IF LrecOrder.FINDFIRST THEN REPEAT
+                CLEAR(LcodPersonResp);
+                IF LrecOrder."Person Responsible" <> '' THEN LcodPersonResp := LrecOrder."Person Responsible";// ELSE LcodPersonResp := LrecOrder."Person Responsible";
+                LrecOrder.CALCFIELDS("Amount Including VAT",LrecOrder.Amount);
+                BuildTempRec(FORMAT(LrecOrder."Document Type"),LrecOrder."No.",LrecOrder."Buy-from Vendor No.",FORMAT(LrecOrder.Status),LrecOrder."Procurement Workflow",LrecOrder."Order Date",LrecOrder."Shortcut Dimension 1 Code",
+                  LrecOrder."Shortcut Dimension 2 Code",LrecOrder."Amount Including VAT",LrecOrder.Amount,LcodPersonResp,'','','',LrecOrder."Vendor Cr. Memo No.",FALSE,LrecDocStatusTEMP);
+              UNTIL LrecOrder.NEXT = 0;
+          END;
+      END;
+
+      LrecDocStatusTEMP.SETCURRENTKEY(Date);
+      LrecDocStatusTEMP.ASCENDING(FALSE);
+      PAGE.RUNMODAL(81060,LrecDocStatusTEMP);
+    END;
+
+    LOCAL PROCEDURE BuildTempRec@1000000003(VcodType@1000000000 : Code[20];VcodDocNo@1000000001 : Code[20];VcodProcType@1000000015 : Code[20];VcodVendor@1000000002 : Code[20];VtxtStatus@1000000003 : Text;VdatDate@1000000013 : Date;VcodSD1@1000000004 : Code[20];VcodSD2@1000000005 : Code[20];VdecGross@1000000006 : Decimal;VdecNet@1000000007 : Decimal;VcodPR@1000000008 : Code[50];VcodPdocNo@1000000009 : Code[20];VcodPONo@1000000010 : Code[20];VtxtDocStatus@1000000016 : Text[30];VcodExtDocNo@1000000014 : Code[35];VbooCompRec@1000000017 : Boolean;VAR RrecDocStatusTEMP@1000000011 : Record 81022);
+    VAR
+      LrecVendor@1000000012 : Record 23;
+    BEGIN
+      IF RrecDocStatusTEMP.GET(VcodType,VcodDocNo)THEN EXIT;
+
+      RrecDocStatusTEMP.INIT;
+      RrecDocStatusTEMP."Doc Type" := VcodType;
+      RrecDocStatusTEMP."Doc. No." := VcodDocNo;
+      RrecDocStatusTEMP.INSERT;
+      RrecDocStatusTEMP."Procurment Type" := VcodProcType;
+      RrecDocStatusTEMP.Vendor := VcodVendor;
+      IF LrecVendor.GET(VcodVendor) THEN RrecDocStatusTEMP."Vendor Name" := LrecVendor.Name;
+      RrecDocStatusTEMP."Approval Status" := FORMAT(VtxtStatus);
+      RrecDocStatusTEMP.Date := VdatDate;
+      RrecDocStatusTEMP.GD1 := VcodSD1;
+      RrecDocStatusTEMP.GD2 := VcodSD2;
+      RrecDocStatusTEMP."Person Responsible" := VcodPR;
+      RrecDocStatusTEMP."Amount Gross" := VdecGross;
+      RrecDocStatusTEMP."Amount Net" := VdecNet;
+      RrecDocStatusTEMP."Order Status" := VtxtDocStatus;
+      RrecDocStatusTEMP."External Document No." := VcodExtDocNo;
+      RrecDocStatusTEMP."Completely Received" := VbooCompRec;
+      RrecDocStatusTEMP.MODIFY;
+    END;
+
+    LOCAL PROCEDURE BuildDepFilter@1000000004();
+    VAR
+      LrecUserDimCoding@1000000000 : Record 81015;
+      LrecGLSetup@1000000001 : Record 98;
+    BEGIN
+      CLEAR(GtxtDepFilter);
+      LrecUserDimCoding.SETRANGE("Portal User",USERID);
+      LrecGLSetup.GET();
+      LrecUserDimCoding.SETRANGE("Dimension Code",LrecGLSetup."Global Dimension 1 Code");
+      //LrecUserDimCoding.SETRANGE("Dimension Code",'DEPARTMENT');
+      IF LrecUserDimCoding.FINDFIRST THEN REPEAT
+        IF GtxtDepFilter = '' THEN GtxtDepFilter := STRSUBSTNO('%1',LrecUserDimCoding."Dimension Value Code") ELSE GtxtDepFilter := GtxtDepFilter + STRSUBSTNO('|%1',LrecUserDimCoding."Dimension Value Code");
+      UNTIL LrecUserDimCoding.NEXT = 0;
+      IF GtxtDepFilter = '' THEN GtxtDepFilter := 'xxxx'
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

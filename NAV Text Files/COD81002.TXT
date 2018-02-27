@@ -1,0 +1,394 @@
+OBJECT Codeunit 81002 Total Approval Setup
+{
+  OBJECT-PROPERTIES
+  {
+    Date=21/09/17;
+    Time=17:09:30;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    OnRun=BEGIN
+            CreateProfiles;
+            InitCueTables;
+            NoSeriesSetup;
+            InitTotalCommunicationSetup;
+            SetupDemoCompany;
+
+            MESSAGE('Complete!');
+          END;
+
+  }
+  CODE
+  {
+
+    LOCAL PROCEDURE CreateProfiles@1000000000();
+    VAR
+      Profile@1000000000 : Record 2000000072;
+    BEGIN
+      // Financial Light Profile
+      Profile.INIT;
+        Profile."Profile ID" := 'TAWEB';
+        Profile.Description := 'Total Financial Web';
+        Profile."Role Center ID" := 81001;
+        Profile."Default Role Center" := TRUE;
+        Profile."Disable Personalization" := TRUE;
+      Profile.INSERT(TRUE);
+
+      Profile.INIT;
+        Profile."Profile ID" := 'TAADMIN';
+        Profile.Description := 'Total Financial Admin';
+        Profile."Role Center ID" := 81038;
+      Profile.INSERT(TRUE);
+    END;
+
+    LOCAL PROCEDURE InitCueTables@1000000001();
+    VAR
+      PurchaseCue@1000000000 : Record 9055;
+      TotalApprovalSetup@1000000001 : Record 81000;
+    BEGIN
+      PurchaseCue.INIT;
+      PurchaseCue."Primary Key" := ' ';
+      IF PurchaseCue.INSERT THEN;
+
+      TotalApprovalSetup.INIT;
+      TotalApprovalSetup."Primary Key" := '';
+      IF TotalApprovalSetup.INSERT THEN;
+    END;
+
+    LOCAL PROCEDURE NoSeriesSetup@1000000002();
+    VAR
+      NoSeries@1000000000 : Record 308;
+      NoSeriesLine@1000000001 : Record 309;
+      TotalApprovalSetup@1000000002 : Record 81000;
+    BEGIN
+      NoSeries.INIT;
+      NoSeries.Code := 'unapp';
+      NoSeries.Description := 'Unapproved TF Docs';
+      NoSeries."Default Nos." := TRUE;
+      NoSeries.INSERT;
+
+      NoSeriesLine.INIT;
+      NoSeriesLine."Series Code" := 'unapp';
+      NoSeriesLine."Line No." := 1000;
+      NoSeriesLine."Increment-by No." := 1;
+      NoSeriesLine."Starting No." := 'UNAPP00001';
+      NoSeriesLine.INSERT;
+
+      NoSeries.INIT;
+      NoSeries.Code := 'APP';
+      NoSeries.Description := 'Approvals';
+      NoSeries."Default Nos." := TRUE;
+      NoSeries.INSERT;
+
+      NoSeriesLine.INIT;
+      NoSeriesLine."Series Code" := 'APP';
+      NoSeriesLine."Line No." := 1000;
+      NoSeriesLine."Increment-by No." := 1;
+      NoSeriesLine."Starting No." := 'APPR100001';
+      NoSeriesLine.INSERT;
+
+      TotalApprovalSetup.GET;
+      TotalApprovalSetup."Unaproved no. Series" := 'UNAPP';
+      TotalApprovalSetup."Appovals Batch" := 'APP';
+      TotalApprovalSetup."Total Communications Active" := TRUE;
+      TotalApprovalSetup.MODIFY;
+    END;
+
+    LOCAL PROCEDURE CreateUser@1000000004(User_Name@1000000001 : Text;UserRole@1000000005 : Code[20];DimCode@1000000006 : Code[20];DimValueCode@1000000007 : Code[20];DimTemplate@1000000003 : Code[20]);
+    VAR
+      User@1000000000 : Record 2000000120;
+      TotalApprovalUserRole@1000000004 : Record 81013;
+      UserDimensionTemplateAss@1000000002 : Record 81021;
+      UserSetup@1000000008 : Record 91;
+    BEGIN
+      User.RESET;
+      User.INIT;
+        User."User Security ID" := CREATEGUID;
+      User.INSERT(TRUE);
+      User."User Name" := User_Name;
+      User."Full Name" := User_Name;
+      User.MODIFY;
+
+      SETUSERPASSWORD(User."User Security ID",'Dynam1cs!');
+      User."Change Password" := FALSE;
+      User.MODIFY;
+
+      // Add User Setup
+      UserSetup.INIT;
+        UserSetup."User ID" := User."User Name";
+      IF UserSetup.INSERT THEN;
+
+      // Add User Role
+      TotalApprovalUserRole.INIT;
+        TotalApprovalUserRole."TF User" := User."User Name";
+        TotalApprovalUserRole."Approval Role" := UserRole;
+        TotalApprovalUserRole.Dimension := DimCode;
+        TotalApprovalUserRole."Dimension Value" := DimValueCode;
+      TotalApprovalUserRole.INSERT(TRUE);
+
+      // Add Dimension Template
+      IF DimTemplate <> '' THEN BEGIN
+        UserDimensionTemplateAss.INIT;
+          UserDimensionTemplateAss.VALIDATE("User Code",User."User Name");
+          UserDimensionTemplateAss.VALIDATE("Template Code",DimTemplate);
+        UserDimensionTemplateAss.INSERT(TRUE);
+      END;
+    END;
+
+    LOCAL PROCEDURE CreateRole@1000000005(ApprovalCode@1000000000 : Code[20];ApprovalDesc@1000000001 : Text;ApprovalBusinessWide@1000000002 : Boolean);
+    VAR
+      TotalApprovalRole@1000000003 : Record 81012;
+    BEGIN
+      TotalApprovalRole.RESET;
+      TotalApprovalRole.INIT;
+        TotalApprovalRole.VALIDATE(Code,ApprovalCode);
+        TotalApprovalRole.VALIDATE(Description,ApprovalDesc);
+        TotalApprovalRole.VALIDATE(Businesswide,ApprovalBusinessWide);
+      IF TotalApprovalRole.INSERT(TRUE) THEN;
+    END;
+
+    LOCAL PROCEDURE CreateDimTemplateDetail@1000000008(DimTemplateCode@1000000000 : Code[20];DimDescription@1000000001 : Text;DimTemplateDetailCode@1000000002 : Code[20];DimTemplateDetailValue@1000000003 : Code[20]);
+    VAR
+      TotalApprovalDimensionTem@1000000004 : Record 81019;
+      DimensionTemplateDetail@1000000005 : Record 81020;
+    BEGIN
+      IF NOT TotalApprovalDimensionTem.GET(DimTemplateCode) THEN BEGIN
+        TotalApprovalDimensionTem.INIT;
+        TotalApprovalDimensionTem.Code := DimTemplateCode;
+        TotalApprovalDimensionTem.Description := DimDescription;
+        TotalApprovalDimensionTem.INSERT(TRUE);
+      END;
+
+      DimensionTemplateDetail.INIT;
+        DimensionTemplateDetail."Dimension Code" := DimTemplateDetailCode;
+        DimensionTemplateDetail."Dimension Value" := DimTemplateDetailValue;
+        DimensionTemplateDetail."Template Code" := DimTemplateCode;
+      IF DimensionTemplateDetail.INSERT(TRUE) THEN;
+    END;
+
+    LOCAL PROCEDURE CreateDimValue@1000000006(DimensionCode@1000000002 : Code[20];DimensionValueCode@1000000003 : Code[20]);
+    VAR
+      Dimension@1000000000 : Record 348;
+      DimensionValue@1000000001 : Record 349;
+      NoDimensionFound@1000000004 : TextConst 'ENU=Dimension %1 cannot be found';
+    BEGIN
+      IF NOT Dimension.GET(DimensionCode) THEN BEGIN
+        Dimension.INIT;
+          Dimension.VALIDATE(Code,'DEPARTMENT');
+          Dimension.VALIDATE(Description,'Department');
+        Dimension.INSERT(TRUE);
+      END;
+
+      DimensionValue.RESET;
+      DimensionValue.INIT;
+        DimensionValue.VALIDATE("Dimension Code",DimensionCode);
+        DimensionValue.VALIDATE(Code,DimensionValueCode);
+      IF DimensionValue.INSERT THEN;
+    END;
+
+    LOCAL PROCEDURE SetupCatalogueLines@1000000009(CatalogueCode@1000000002 : Code[20];CatalogueDescription@1000000003 : Text;CatalogueLineType@1000000004 : ' ,G/L Account,Item,,Fixed Asset,Charge (Item)';CatalogueLineIndex@1000000005 : Integer;CatalogueLineNo@1000000006 : Code[20];CatalogueLineDescription@1000000007 : Text;CatalogueLineSelectable@1000000008 : Boolean);
+    VAR
+      Catalogue@1000000000 : Record 81002;
+      CatalogueLine@1000000001 : Record 81003;
+    BEGIN
+      IF NOT Catalogue.GET(CatalogueCode) THEN BEGIN
+        Catalogue.INIT;
+          Catalogue.Code := CatalogueCode;
+          Catalogue.Description := CatalogueDescription;
+          Catalogue.Active := TRUE;
+        Catalogue.INSERT;
+      END;
+
+      CatalogueLine.RESET;
+      CatalogueLine.SETRANGE("Catalogue Code",CatalogueCode);
+      CatalogueLine.SETRANGE(Index,CatalogueLineIndex);
+      IF NOT CatalogueLine.FINDFIRST THEN BEGIN
+        CatalogueLine.INIT;
+        CatalogueLine."Catalogue Code" := CatalogueCode;
+        CatalogueLine.Index := CatalogueLineIndex;
+        CatalogueLine.INSERT(TRUE);
+      END;
+
+      CatalogueLine.Type := CatalogueLineType;
+      CatalogueLine."No." := CatalogueLineNo;
+      CatalogueLine.Description := CatalogueLineDescription;
+      CatalogueLine."Header Line" := CatalogueLineSelectable;
+      CatalogueLine.MODIFY;
+    END;
+
+    LOCAL PROCEDURE SetupDocumentTypes@1000000010(DocType@1000000001 : Code[20];DocDescription@1000000002 : Text;DocReportID@1000000003 : Integer;DocCatalogues@1000000004 : ARRAY [10] OF Code[20]);
+    VAR
+      DocumentType@1000000000 : Record 81001;
+      IntegerArray@1000000005 : Integer;
+      DocumentTypeCatalogue@1000000006 : Record 81005;
+    BEGIN
+      IF NOT DocumentType.GET(DocType) THEN BEGIN
+        DocumentType.INIT;
+          DocumentType."Procurement Workflow" := DocType;
+          DocumentType.Description := DocDescription;
+          DocumentType."Report ID" := DocReportID;
+          DocumentType."Budget Approval Type" := DocumentType."Budget Approval Type"::"By Document";
+        DocumentType.INSERT;
+      END;
+
+      FOR IntegerArray := 1 TO 10 DO BEGIN
+        IF DocCatalogues[IntegerArray] <> '' THEN BEGIN
+          DocumentTypeCatalogue.INIT;
+            DocumentTypeCatalogue."Document Type" := DocumentType."Procurement Workflow";
+            DocumentTypeCatalogue."Catalogue Code" := DocCatalogues[IntegerArray];
+          IF DocumentTypeCatalogue.INSERT THEN;
+        END;
+      END;
+    END;
+
+    LOCAL PROCEDURE AssignDocumentTypes@1000000011(User_Name@1000000000 : Code[30];DocType@1000000001 : Code[20]);
+    VAR
+      UserDocumentTypes@1000000002 : Record 81023;
+    BEGIN
+      UserDocumentTypes.INIT;
+        UserDocumentTypes.User := User_Name;
+        UserDocumentTypes."Document Type" := DocType;
+      IF UserDocumentTypes.INSERT THEN;
+    END;
+
+    LOCAL PROCEDURE InitTotalCommunicationSetup@1000000003();
+    VAR
+      TotalCommunicationSetup@1000000000 : Record 91000;
+    BEGIN
+      TotalCommunicationSetup.INIT;
+      TotalCommunicationSetup."No." := 'APPROVAL';
+      TotalCommunicationSetup.INSERT(TRUE);
+
+      TotalCommunicationSetup."Communication Type" := TotalCommunicationSetup."Communication Type"::Approval;
+      TotalCommunicationSetup."Communication Method" := TotalCommunicationSetup."Communication Method"::"E-Mail";
+      TotalCommunicationSetup.Description := 'Total Approvals';
+      TotalCommunicationSetup.Enabled := TRUE;
+      TotalCommunicationSetup."Sender Address" := 'noreply@totalapprovals.co.uk';
+      TotalCommunicationSetup.URL := 'http://localhost:8080/DynamicsNAV100/WebClient/';
+      TotalCommunicationSetup."Save Path" := 'C:\TES\EMAILS\';
+      TotalCommunicationSetup."File Suffix" := '.PDF';
+      TotalCommunicationSetup.MODIFY;
+    END;
+
+    LOCAL PROCEDURE InitTotalApprovalWorkflow@1000000012();
+    VAR
+      TotalApprovalWorkflow@1000000000 : Record 81009;
+    BEGIN
+      TotalApprovalWorkflow.INIT;
+      TotalApprovalWorkflow.INSERT;
+    END;
+
+    LOCAL PROCEDURE SetupDemoCompany@1000000007();
+    VAR
+      DocumentCatalogue@1000000000 : ARRAY [10] OF Code[20];
+    BEGIN
+      CreateDimValue('DEPARTMENT','IT');
+      CreateDimValue('DEPARTMENT','SALES');
+
+      CreateDimTemplateDetail('IT','IT','DEPARTMENT','IT');
+      //CreateDimTemplateDetail('IT','IT','DEPARTMENT','GENERAL');
+      CreateDimTemplateDetail('SALES','Sales','DEPARTMENT','Sales');
+      //CreateDimTemplateDetail('SALES','Sales','DEPARTMENT','General');
+
+      CreateRole('DIRECTOR','Director',TRUE);
+      CreateRole('MANAGER','Manager',FALSE);
+      CreateRole('REGIONAL MANAGER','Regional Manager',FALSE);
+      CreateRole('STANDARD','Standard',FALSE);
+
+      CreateUser('Jane','DIRECTOR','DEPARTMENT','','');
+      CreateUser('Steve','MANAGER','DEPARTMENT','IT','IT');
+      CreateUser('Karen','MANAGER','DEPARTMENT','SALES','SALES');
+      CreateUser('John','MANAGER','DEPARTMENT','SALES','SALES');
+      CreateUser('Peter','STANDARD','DEPARTMENT','IT','IT');
+      CreateUser('Sharon','STANDARD','DEPARTMENT','IT','IT');
+      CreateUser('Chris','REGIONAL MANAGER','DEPARTMENT','SALES','SALES');
+      CreateUser('Nicola','REGIONAL MANAGER','DEPARTMENT','SALES','SALES');
+      CreateUser('Paula','STANDARD','DEPARTMENT','SALES','SALES');
+      CreateUser('James','STANDARD','DEPARTMENT','SALES','SALES');
+      CreateUser('Lee','STANDARD','DEPARTMENT','SALES','SALES');
+
+      SetupCatalogueLines('GENERAL','General',0,10000,'','Travel Expenses',FALSE);
+      SetupCatalogueLines('GENERAL','General',1,20000,'8310','Train',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,30000,'8310','Taxi',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,40000,'8310','Parking',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,50000,'8310','Accommodation',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,60000,'8310','Meals',TRUE);
+      SetupCatalogueLines('GENERAL','General',0,70000,'','Consumables',FALSE);
+      SetupCatalogueLines('GENERAL','General',1,80000,'8310','Stationary',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,90000,'8310','Hardware',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,100000,'8310','Office Supplies',TRUE);
+      SetupCatalogueLines('GENERAL','General',0,110000,'','Training',FALSE);
+      SetupCatalogueLines('GENERAL','General',1,120000,'8310','Travel Materials',TRUE);
+      SetupCatalogueLines('GENERAL','General',1,130000,'8310','Course Subscriptions',TRUE);
+
+      SetupCatalogueLines('IT','IT',0,10000,'','Hardware',FALSE);
+      SetupCatalogueLines('IT','IT',1,20000,'8310','Servers',TRUE);
+      SetupCatalogueLines('IT','IT',1,30000,'8310','Desktops',TRUE);
+      SetupCatalogueLines('IT','IT',1,40000,'8310','Laptops',TRUE);
+      SetupCatalogueLines('IT','IT',1,50000,'8310','Printers',TRUE);
+      SetupCatalogueLines('IT','IT',0,60000,'','Software',FALSE);
+      SetupCatalogueLines('IT','IT',1,70000,'8310','0365 Subscription',TRUE);
+      SetupCatalogueLines('IT','IT',1,80000,'8310','ERP Systems Support',TRUE);
+
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',0,10000,'','Expense Map',FALSE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,20000,'8310','12340',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,30000,'8310','12341',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,40000,'8310','12342',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,50000,'8310','12343',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,60000,'8310','12345',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,70000,'8310','12346',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,80000,'8310','12347',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,90000,'8310','12348',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,100000,'8310','12349',TRUE);
+      SetupCatalogueLines('GL Expense Map','GL Expense Map',1,110000,'8310','12350',TRUE);
+
+      SetupCatalogueLines('Bus Infrastructure','Business Infrastructure',0,10000,'','Utilities',FALSE);
+      SetupCatalogueLines('Bus Infrastructure','Business Infrastructure',1,20000,'8310','Cloud Services',TRUE);
+      SetupCatalogueLines('Bus Infrastructure','Business Infrastructure',1,30000,'8310','Insurance Services',TRUE);
+      SetupCatalogueLines('Bus Infrastructure','Business Infrastructure',1,40000,'8310','Consultancy Services',TRUE);
+      CLEAR(DocumentCatalogue);
+      DocumentCatalogue[1] := 'IT';
+      SetupDocumentTypes('IT','IT',1322,DocumentCatalogue);
+
+      CLEAR(DocumentCatalogue);
+      DocumentCatalogue[1] := 'GENERAL';
+      SetupDocumentTypes('GENERAL','General',1322,DocumentCatalogue);
+
+      CLEAR(DocumentCatalogue);
+      DocumentCatalogue[1] := 'GL EXPENSE MAP';
+      SetupDocumentTypes('GL EXPENSE MAP','GL Expense Map',1322,DocumentCatalogue);
+
+      CLEAR(DocumentCatalogue);
+      DocumentCatalogue[1] := 'BUS INFRASTRUCTURE';
+      SetupDocumentTypes('BUS INFRASTRUCTURE','Business Infrastruture',1322,DocumentCatalogue);
+
+      AssignDocumentTypes('Jane','BUS INFRASTRUCTURE');
+      AssignDocumentTypes('Jane','GENERAL');
+      AssignDocumentTypes('Jane','IT');
+      AssignDocumentTypes('Jane','GL EXPENSE MAP');
+      AssignDocumentTypes('Steve','BUS INFRASTRUCTURE');
+      AssignDocumentTypes('Steve','GENERAL');
+      AssignDocumentTypes('Steve','IT');
+      AssignDocumentTypes('Steve','GL EXPENSE MAP');
+      AssignDocumentTypes('Karen','GENERAL');
+      AssignDocumentTypes('Karen','GL EXPENSE MAP');
+      AssignDocumentTypes('John','GENERAL');
+      AssignDocumentTypes('John','GL EXPENSE MAP');
+      AssignDocumentTypes('Peter','GENERAL');
+      AssignDocumentTypes('Peter','IT');
+      AssignDocumentTypes('Sharon','GENERAL');
+      AssignDocumentTypes('Sharon','IT');
+      AssignDocumentTypes('Chris','GENERAL');
+      AssignDocumentTypes('Nicola','GENERAL');
+      AssignDocumentTypes('Paula','GENERAL');
+      AssignDocumentTypes('James','GENERAL');
+      AssignDocumentTypes('Lee','GENERAL');
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

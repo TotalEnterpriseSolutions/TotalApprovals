@@ -1,0 +1,2035 @@
+OBJECT Codeunit 81000 Total Approval Functions
+{
+  OBJECT-PROPERTIES
+  {
+    Date=25/10/17;
+    Time=13:57:29;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Permissions=TableData 454=rimd;
+    OnRun=VAR
+            RtxtError@1000000000 : Text;
+          BEGIN
+          END;
+
+  }
+  CODE
+  {
+
+    PROCEDURE SubmitForApproval@1000000000(DocType@1000000002 : 'Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order';DocNo@1000000001 : Code[20];VAR ErrorText@1000000000 : Text[150]) : Boolean;
+    VAR
+      PurchaseHeader@1000000003 : Record 38;
+      ApprovalEntryBudget@1000000004 : TEMPORARY Record 454;
+      ApprovalEntryCommercial@1000000008 : TEMPORARY Record 454;
+      ApprovalEntry@1000000010 : Record 454;
+      DocumentType@1000000009 : Record 81001;
+      TotalApprovalSetup@1000000012 : Record 81000;
+      ApprovalTemplate@1000000014 : Record 81008;
+      Vendor@1000000015 : Record 23;
+      BudgetApplies@1000000005 : Boolean;
+      CommercialApplies@1000000006 : Boolean;
+      LtxtError004@1000000013 : TextConst 'ENU=Procurement Type %1 does not exist.;ENG=Document Type %1 does not exist.';
+      LtxtError007@1000000007 : TextConst 'ENU=No Approvers can be found for this document.;ENG=No Approvers can be found for this document.';
+      LtxtError006@1000000011 : TextConst 'ENU="""Raised By"" not defined.";ENG="""Raised By"" not defined."';
+      LtxtError008@1000000016 : TextConst 'ENU=Document NOT found';
+      LtxtError009@1000000017 : TextConst 'ENU=Submit Error: %1;ENG=Submit Error: %1';
+      LtxtConst001@1000000018 : TextConst 'ENU=Are you sure you want to submit %1 %2: %3 œ%4 for approval?;ENG=Are you sure you want to submit %1 %2: %3 œ%4 for approval?';
+      BudgetApprovalWasSelfApproved@1000000019 : Boolean;
+      Text001@1000000020 : TextConst 'ENU=This document has been self-approved as it is within your budgetary limit.';
+      FirstSequence@1000000021 : Integer;
+    BEGIN
+      CLEAR(ErrorText);
+      PurchaseHeader.RESET;
+      PurchaseHeader.SETRANGE("Document Type",DocType);
+      PurchaseHeader.SETRANGE("No.",DocNo);
+      IF NOT PurchaseHeader.FINDFIRST THEN BEGIN
+        ErrorText := LtxtError008;
+        EXIT;
+      END;
+
+      PurchaseHeader.CALCFIELDS(Amount);
+      IF NOT CONFIRM(STRSUBSTNO(LtxtConst001,FORMAT(PurchaseHeader."Document Type"),PurchaseHeader."Unapproved No.",PurchaseHeader."Posting Description",FORMAT(PurchaseHeader.Amount,0,'<Sign><Integer><Decimals,3>'))) THEN EXIT(FALSE);
+
+      CLEAR(PurchaseHeader."Error Text");
+      PurchaseHeader.MODIFY;
+
+      //Checks
+      DocumentChecks(DocType,DocNo,ErrorText);
+
+      IF ErrorText <> '' THEN BEGIN
+        PurchaseHeader."Error Text" := STRSUBSTNO(LtxtError009,ErrorText);
+        PurchaseHeader.MODIFY;
+        EXIT(FALSE);
+      END;
+
+      //Clear up existing approvals
+      CancelALE(PurchaseHeader."Document Type",PurchaseHeader."No.");
+
+      //Do Budget Approval
+      BudgetApproval(PurchaseHeader,ApprovalEntryBudget,BudgetApprovalWasSelfApproved,ErrorText,ApprovalEntry);
+
+      //set the budget flag
+      ApprovalEntryBudget.RESET;
+      ApprovalEntryBudget.SETRANGE(Status,ApprovalEntryBudget.Status::Open);//might be self approved so only ALE is created as approved
+      IF ApprovalEntryBudget.FINDFIRST THEN BudgetApplies :=TRUE;
+
+      //Do Commercial Approval Templates
+      CommercialApplies := FALSE;
+
+      ApprovalEntryCommercial.RESET;
+      ApprovalEntryCommercial.DELETEALL;
+
+      ApprovalTemplate.RESET;
+      ApprovalTemplate.SETRANGE(Active,TRUE);
+      IF ApprovalTemplate.FINDSET(FALSE) THEN REPEAT
+        IF NOT "ApplyTemplate-Commercial"(PurchaseHeader,ApprovalTemplate,ErrorText,ApprovalEntryCommercial) THEN BEGIN
+          PurchaseHeader."Error Text" := ErrorText;
+          PurchaseHeader.Status := PurchaseHeader.Status::Open;
+          PurchaseHeader.MODIFY;
+          EXIT(FALSE);
+        END;
+      UNTIL ApprovalTemplate.NEXT =0;
+
+      //set the commercial flag
+      ApprovalEntryCommercial.RESET;
+      IF ApprovalEntryCommercial.FINDFIRST THEN CommercialApplies :=TRUE;
+
+      //must find at least one approver
+      IF NOT (CommercialApplies OR BudgetApplies) THEN BEGIN
+        IF NOT BudgetApprovalWasSelfApproved THEN BEGIN
+          ErrorText := LtxtError007;
+          PurchaseHeader."Error Text" := LtxtError007;
+          PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Open);
+          PurchaseHeader.MODIFY;
+          EXIT(FALSE);
+        END;
+      END;
+
+      //Consider the Approval sequence for the document type
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+      CASE DocumentType."Approval Sequence" OF
+        DocumentType."Approval Sequence"::"Commercial then Budget":
+          BEGIN
+            IF BudgetApplies AND CommercialApplies THEN BEGIN
+              //find the open budget entries and set to pending
+              ApprovalEntryBudget.RESET;
+              IF ApprovalEntryBudget.FINDSET(TRUE) THEN REPEAT
+                ApprovalEntryBudget.Status := ApprovalEntryBudget.Status::Created;
+                ApprovalEntryBudget.MODIFY;
+              UNTIL ApprovalEntryBudget.NEXT =0;
+              CreateRealALEs(ApprovalEntryCommercial,ApprovalEntry);
+              CreateRealALEs(ApprovalEntryBudget,ApprovalEntry);
+            END ELSE BEGIN
+              CreateRealALEs(ApprovalEntryBudget,ApprovalEntry);
+              CreateRealALEs(ApprovalEntryCommercial,ApprovalEntry);
+            END;
+          END;
+        DocumentType."Approval Sequence"::"Budget then Commercial":
+          BEGIN
+            IF BudgetApplies AND CommercialApplies THEN BEGIN
+              //find the open commercial entries and set to pending
+              ApprovalEntryCommercial.RESET;
+              IF ApprovalEntryCommercial.FINDSET(TRUE) THEN REPEAT
+                ApprovalEntryCommercial.Status := ApprovalEntryCommercial.Status::Created;
+                ApprovalEntryCommercial.MODIFY;
+              UNTIL ApprovalEntryCommercial.NEXT =0;
+              CreateRealALEs(ApprovalEntryBudget,ApprovalEntry);
+              CreateRealALEs(ApprovalEntryCommercial,ApprovalEntry);
+            END ELSE BEGIN
+              CreateRealALEs(ApprovalEntryBudget,ApprovalEntry);
+              CreateRealALEs(ApprovalEntryCommercial,ApprovalEntry);
+            END;
+          END;
+        DocumentType."Approval Sequence"::"Commercial and Budget at the Same Time":
+          BEGIN
+            CreateRealALEs(ApprovalEntryBudget,ApprovalEntry);
+            CreateRealALEs(ApprovalEntryCommercial,ApprovalEntry);
+          END;
+        DocumentType."Approval Sequence"::"Budget Only":
+          BEGIN
+            CreateRealALEs(ApprovalEntryBudget,ApprovalEntry);
+          END;
+      END;
+
+      IF ErrorText <> '' THEN BEGIN
+        PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Open);
+        PurchaseHeader."Error Text" := ErrorText;
+        PurchaseHeader.MODIFY;
+        EXIT(FALSE);
+      END;
+
+      PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::"Pending Approval");
+      PurchaseHeader."Error Text" := '';
+      PurchaseHeader.MODIFY;
+
+
+      //Check for self approval
+      //getting real ALE's for the Document & Sort Descending by sequence
+      ApprovalEntry.RESET;
+      ApprovalEntry.SETRANGE("Document No.",PurchaseHeader."No.");
+      ApprovalEntry.SETRANGE(Status,ApprovalEntry.Status::Open);
+      ApprovalEntry.SETCURRENTKEY("Table ID","Document Type","Document No.","Sequence No.","Record ID to Approve");
+      ApprovalEntry.ASCENDING(TRUE);
+      ApprovalEntry.FINDFIRST;
+      //refilter ALE's by that sequence and by the person resonsible - if an entry if found approve it
+      FirstSequence := ApprovalEntry."Sequence No.";
+      ApprovalEntry.RESET;
+      ApprovalEntry.SETRANGE("Document No.",PurchaseHeader."No.");
+      ApprovalEntry.SETRANGE(Status,ApprovalEntry.Status::Open);
+      ApprovalEntry.SETRANGE("Sequence No.",FirstSequence);
+      ApprovalEntry.SETRANGE("Approver ID",PurchaseHeader."Person Responsible");
+      IF (ApprovalEntry.FINDFIRST) AND  (DocumentType."Budget Approval Type"<>DocumentType."Budget Approval Type"::"By Person Responsible") THEN BEGIN
+        EXIT(ApproveByWorkflow(ApprovalEntry."Entry No.",ErrorText));
+      END ELSE BEGIN
+        //check for auto-approval
+        TotalApprovalSetup.FINDFIRST;
+        IF TotalApprovalSetup."Auto Approval Role" <> '' THEN BEGIN
+          AutoApproveCheck(PurchaseHeader."Document Type",PurchaseHeader."No.",ErrorText);
+          IF ErrorText <> '' THEN BEGIN
+            PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Open);
+            PurchaseHeader."Error Text" := ErrorText;
+            PurchaseHeader.MODIFY;
+            EXIT(FALSE);
+          END;
+        END;
+      END;
+      EXIT(TRUE);
+    END;
+
+    LOCAL PROCEDURE DocumentChecks@1000000027(DocType@1000000002 : 'Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order';DocNo@1000000001 : Code[20];VAR ErrorText@1000000000 : Text[150]) : Boolean;
+    VAR
+      PurchaseHeader@1000000003 : Record 38;
+      PurchaseLine@1000000007 : Record 39;
+      DocumentType@1000000004 : Record 81001;
+      LtxtError001@1000000013 : TextConst 'ENU=Document NOT found';
+      LtxtError004@1000000005 : TextConst 'ENU=Document Type %1 does not exist.;ENG=Document Type %1 does not exist.';
+      LtxtError006@1000000006 : TextConst 'ENU=%1 not defined.;ENG="""Raised By"" not defined."';
+      DimensionSetEntry@1000000010 : TEMPORARY Record 480;
+      DocumentFunctions@1000000009 : Codeunit 81001;
+      Counter@1000000008 : Integer;
+      LtxtConstBlank@1000000011 : TextConst 'ENU=''''';
+      DimValue@1000000012 : Text;
+      LtxtConst002@1000000022 : TextConst 'ENU=Posting description must not be blank;ENG=Posting description must not be blank';
+      LtxtConst003@1000000021 : TextConst 'ENU=%1 is missing a mandatory dimension %2;ENG=%1 is missing a mandatory dimension %2';
+      LtxtConst004@1000000020 : TextConst 'ENU=%1 is missing dimension value: %2;ENG=%1 is missing dimension value: %2';
+      LtxtConst005@1000000019 : TextConst 'ENU=" : %1";ENG=" : %1"';
+      LtxtConst006@1000000018 : TextConst 'ENU=Order must have a shipping location specified;ENG=Order must have a shipping location specified';
+      LtxtConst007@1000000017 : TextConst 'ENU=Expected receipt date is required;ENG=Expected receipt date is required';
+      LtxtConst008@1000000016 : TextConst 'ENU=Please complete all mandatory fields - Line Description is missing a value;ENG=Please complete all mandatory fields - Line Description is missing a value';
+      LtxtConst009@1000000015 : TextConst 'ENU=Please complete all mandatory line fields - Line %1 is missing a Catalogue Code value;ENG=Please complete all mandatory line fields - Line %1 is missing a Catalogue Code value';
+      LtxtConst010@1000000014 : TextConst 'ENU=Please complete all mandatory line fields - Line %1 is missing a Catalogue Line value;ENG=Please complete all mandatory line fields - Line %1 is missing a Catalogue Line value';
+      LtxtConst011@1000000023 : TextConst 'ENU=Line %1 is has zero value;ENG=Line %1 is has zero value';
+      LtxtConst012@1000000024 : TextConst 'ENU=%1 is missing dimension values';
+      LtxtConst013@1000000025 : TextConst 'ENU=Line %1-%2 requires a Job Code;ENG=Line %1-%2 requires a Job Code';
+      LtxtConst014@1000000026 : TextConst 'ENU=Line %1-%2 requires a Job Task Code';
+      LtxtConst015@1000000027 : TextConst 'ENU=Document has no value;ENG=Document has no value';
+      LtxtConst016@1000000028 : TextConst 'ENU=Mandatory Additional Information is missing for line %1';
+      LtxtConst017@1000000029 : TextConst 'ENG=Please enter a Payment Method Code for this document';
+    BEGIN
+      //Header
+      PurchaseHeader.RESET;
+      PurchaseHeader.SETRANGE("Document Type",DocType);
+      PurchaseHeader.SETRANGE("No.",DocNo);
+      IF NOT PurchaseHeader.FINDFIRST THEN BEGIN
+        ErrorText := LtxtError001;
+        EXIT;
+      END;
+
+      IF NOT DocumentType.GET(PurchaseHeader."Procurement Workflow") THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtError004,PurchaseHeader."Procurement Workflow");
+        EXIT;
+      END;
+
+      IF (DocumentType."Show Dimension 1") AND (PurchaseHeader."Shortcut Dimension 1 Code" = '') THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst003,PurchaseHeader."Document Type",DocumentType."Approval Dimension 1");
+        EXIT;
+      END;
+
+      IF (DocumentType."Show Dimension 2") AND (PurchaseHeader."Shortcut Dimension 2 Code" = '') THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst003,PurchaseHeader."Document Type",DocumentType."Approval Dimension 2");
+        EXIT;
+      END;
+
+      DocumentFunctions.LoadTempDimSet(PurchaseHeader."Dimension Set ID",DimensionSetEntry);
+      IF DocumentFunctions.CheckDims(0,DocumentType."Procurement Workflow",DimensionSetEntry) > 0 THEN BEGIN
+        DimensionSetEntry.SETFILTER("Dimension Value Code",'%1',LtxtConstBlank);
+        IF DimensionSetEntry.FINDFIRST THEN REPEAT
+          IF DimValue = '' THEN DimValue:= DimensionSetEntry."Dimension Code" ELSE
+            DimValue := DimValue + STRSUBSTNO(LtxtConst005,DimensionSetEntry."Dimension Code");
+        UNTIL DimensionSetEntry.NEXT = 0;
+        ErrorText := STRSUBSTNO(LtxtConst004,PurchaseHeader."Document Type",DimValue);
+        EXIT;
+      END;
+
+      CASE PurchaseHeader."Document Type" OF
+        PurchaseHeader."Document Type"::Order: BEGIN
+          IF PurchaseHeader.Originator = '' THEN BEGIN
+            ErrorText := STRSUBSTNO(LtxtError006,'Originator');
+            EXIT
+          END;
+          IF PurchaseHeader."Person Responsible" = '' THEN BEGIN
+            ErrorText := STRSUBSTNO(LtxtError006,'Person Responsible');
+            EXIT
+          END;
+          IF PurchaseHeader."Posting Description" = '' THEN BEGIN
+            ErrorText := LtxtConst002;
+            EXIT;
+          END;
+          IF PurchaseHeader."Location Code" = '' THEN BEGIN
+            ErrorText := LtxtConst006;
+            EXIT
+          END;
+
+          IF (DocumentType."Due Date Required") AND (PurchaseHeader."Expected Receipt Date" = 0D) THEN BEGIN
+            ErrorText := LtxtConst007;
+            EXIT;
+          END;
+        END;
+        PurchaseHeader."Document Type"::Invoice: BEGIN
+        //Do Checks on invoice
+          //Person Responsible
+          PurchaseHeader.TESTFIELD("Person Responsible");
+          PurchaseHeader.TESTFIELD("Shortcut Dimension 1 Code");
+          //Check for invoice Scan
+          //IF PurchaseHeader."Document Path" = '' THEN ERROR('Please print barcode for invoice and scan before sending for approval');
+          //IF NOT EXISTS(PurchaseHeader."Document Path") THEN ERROR('Invoice scan does not exist in Sharepoint document path.  Please scan and save the image before submitting for approval');
+        END;
+      END;
+      //IF DocumentType."Attachment Required" THEN IF NOT CheckForAttachment(81004,LrecDH."No.") THEN ErrorText := STRSUBSTNO(LtxtError011,DocumentType.Description);
+
+      //Lines
+      PurchaseLine.RESET;
+      PurchaseLine.SETRANGE("Document Type",PurchaseHeader."Document Type");
+      PurchaseLine.SETRANGE("Document No.",PurchaseHeader."No.");
+      IF PurchaseLine.FINDFIRST THEN REPEAT
+        Counter +=1;
+        IF PurchaseLine.Description = '' THEN ErrorText := LtxtConst008;
+        CASE PurchaseLine.Type OF
+          PurchaseLine.Type::Item,PurchaseLine.Type::"G/L Account",PurchaseLine.Type::"Fixed Asset",PurchaseLine.Type::"Charge (Item)":
+            BEGIN
+              CASE PurchaseHeader."Document Type" OF
+                PurchaseHeader."Document Type"::Order: BEGIN
+                  IF PurchaseLine."Catalogue Code" = '' THEN ErrorText := STRSUBSTNO(LtxtConst009,Counter);
+                  IF PurchaseLine."Catalogue Line" = 0 THEN ErrorText := STRSUBSTNO(LtxtConst010,Counter);
+                END;
+              END;
+              PurchaseLine.VALIDATE(Quantity);
+              PurchaseLine.VALIDATE("Direct Unit Cost");
+              PurchaseLine.UpdateAmounts;
+              IF PurchaseLine."Amount Including VAT" = 0 THEN ErrorText := STRSUBSTNO(LtxtConst011,Counter);
+              IF PurchaseLine.CheckAdditionalMandatoryInfo = FALSE THEN ErrorText := STRSUBSTNO(LtxtConst016,PurchaseLine."Line No.");
+              DocumentFunctions.LoadTempDimSet(PurchaseLine."Dimension Set ID",DimensionSetEntry);
+              IF DocumentFunctions.CheckDims(PurchaseLine."Catalogue Line",PurchaseLine."Catalogue Code",DimensionSetEntry) > 0 THEN BEGIN
+                DimensionSetEntry.SETFILTER("Dimension Value Code",'%1',LtxtConstBlank);
+                IF DimensionSetEntry.FINDFIRST THEN REPEAT
+                  IF DimValue = '' THEN DimValue:= DimensionSetEntry."Dimension Code" ELSE
+                    DimValue := DimValue + STRSUBSTNO(' : %1',DimensionSetEntry."Dimension Code");
+                UNTIL DimensionSetEntry.NEXT = 0;
+                ErrorText := STRSUBSTNO(LtxtConst012,PurchaseHeader."Document Type");
+              END;
+            END;
+          PurchaseLine.Type::" ":
+            BEGIN
+
+            END;
+        END;
+        IF PurchaseLine."Job Coding Required" THEN BEGIN
+          IF PurchaseLine."Job No." = '' THEN ERROR(STRSUBSTNO(LtxtConst013,Counter,PurchaseLine.Description));
+          IF PurchaseLine."Job Task No." = '' THEN ERROR(STRSUBSTNO(LtxtConst014,Counter,PurchaseLine.Description));
+        END;
+        IF ErrorText <> '' THEN EXIT;
+      UNTIL (PurchaseLine.NEXT = 0);
+
+      PurchaseHeader.CALCFIELDS(Amount);
+      IF PurchaseHeader.Amount = 0 THEN BEGIN
+        ErrorText := LtxtConst015;
+        EXIT;
+      END;
+      EXIT(TRUE);
+    END;
+
+    LOCAL PROCEDURE BudgetApproval@1000000001(VAR PurchaseHeader@1000000004 : Record 38;VAR ApprovalEntryBudget@1000000005 : TEMPORARY Record 454;VAR BudgetApprovalWasSelfApproved@1000000002 : Boolean;VAR ErrorText@1000000003 : Text;VAR ApprovalEntry@1000000006 : Record 454) : Integer;
+    VAR
+      DocumentType@1000000000 : Record 81001;
+    BEGIN
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+
+      CASE DocumentType."Budget Approval Type" OF
+        DocumentType."Budget Approval Type"::None:
+          BEGIN
+            PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Released);
+            PurchaseHeader."Error Text" := '';
+            PurchaseHeader.MODIFY;
+            EXIT(0);
+          END;
+        DocumentType."Budget Approval Type"::"By Document":
+          BEGIN
+            IF NOT BuildBudgetApproval(PurchaseHeader,ApprovalEntryBudget,BudgetApprovalWasSelfApproved,ErrorText,ApprovalEntry) THEN
+              BEGIN
+                PurchaseHeader."Error Text" := ErrorText;
+                PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Open);
+                PurchaseHeader.MODIFY;
+                EXIT(1);
+              END;
+          END;
+        DocumentType."Budget Approval Type"::"By Line":
+          BEGIN
+            IF NOT BuildBudgetApproval(PurchaseHeader,ApprovalEntryBudget,BudgetApprovalWasSelfApproved,ErrorText,ApprovalEntry) THEN BEGIN
+              PurchaseHeader."Error Text" := ErrorText;
+              PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Open);
+              PurchaseHeader.MODIFY;
+              EXIT(1);
+            END;
+          END;
+        DocumentType."Budget Approval Type"::Manual:
+          BEGIN
+            PurchaseHeader.VALIDATE(Status,PurchaseHeader.Status::Released);
+            PurchaseHeader."Error Text" := '';
+            PurchaseHeader.MODIFY;
+            EXIT(0)
+          END;
+        DocumentType."Budget Approval Type"::"By Person Responsible":
+          BEGIN
+            CreateTempPersRespALE(PurchaseHeader,ApprovalEntryBudget);
+          END;
+      END;
+    END;
+
+    LOCAL PROCEDURE BuildBudgetApproval@1000000002(VAR PurchaseHeader@1000000001 : Record 38;VAR ApprovalEntryBudget@1000000000 : TEMPORARY Record 454;VAR BudgetApprovalWasSelfApproved@1000000006 : Boolean;VAR ErrorText@1000000002 : Text;VAR ApprovalEntry@1000000014 : Record 454) : Boolean;
+    VAR
+      DocumentType@1000000004 : Record 81001;
+      ApprovalsBuffer@1000000003 : TEMPORARY Record 81014;
+      PurchaseLine@1000000005 : Record 39;
+      ApprovalEntryTemp@1000000012 : TEMPORARY Record 454;
+      TotalApprovalSetup@1000000007 : Record 81000;
+      TotalApprovalUserRole@1000000011 : Record 81013;
+      ApprovalsProfileText@1000000008 : Text;
+      Text001@1000000009 : TextConst 'ENU=Approval by Dimension Profile:\\';
+      Text002@1000000010 : TextConst 'ENU=Dimension %1 Value %2: œ%3  Ex.VAT.\';
+    BEGIN
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+      BudgetApprovalWasSelfApproved := FALSE;
+
+      ApprovalsBuffer.RESET;
+      ApprovalsBuffer.DELETEALL;
+      PurchaseLine.RESET;
+      PurchaseLine.SETRANGE("Document Type",PurchaseHeader."Document Type");
+      PurchaseLine.SETRANGE("Document No.",PurchaseHeader."No.");
+
+      CASE DocumentType."Budget Approval Type" OF
+        DocumentType."Budget Approval Type"::"By Document":
+          BEGIN
+            AppendToBufferTable(0,PurchaseHeader,PurchaseLine,ApprovalsBuffer);
+          END;
+        DocumentType."Budget Approval Type"::"By Line":
+          BEGIN
+            IF PurchaseLine.FINDFIRST THEN REPEAT
+              AppendToBufferTable(1,PurchaseHeader,PurchaseLine,ApprovalsBuffer);
+            UNTIL PurchaseLine.NEXT =0;
+          END;
+      END;
+
+      //post process buffer table
+      ApprovalsBuffer.RESET;
+      IF ApprovalsBuffer.FINDFIRST THEN REPEAT
+        PostProcessBufferRecord(PurchaseHeader,ApprovalsBuffer);
+      UNTIL ApprovalsBuffer.NEXT =0;
+
+      TotalApprovalSetup.FINDFIRST;
+      IF TotalApprovalSetup."Test Mode" THEN BEGIN
+        ApprovalsProfileText := Text001;
+        IF ApprovalsBuffer.FINDFIRST THEN REPEAT
+          ApprovalsProfileText += STRSUBSTNO(Text002,ApprovalsBuffer.D1,ApprovalsBuffer.D1V,ApprovalsBuffer."Value Ex. VAT");
+        UNTIL ApprovalsBuffer.NEXT =0;
+        IF CONFIRM(ApprovalsProfileText)THEN;
+      END;
+
+      {
+      //check for auto approval else do the full approvals logic create the ALE's from the buffer
+      IF UserCanSelfApprove(PurchaseHeader,DocumentType,ApprovalsBuffer) THEN BEGIN
+        BudgetApprovalWasSelfApproved := TRUE;
+        //Create and Approved Approval Entry
+        GetUserRoleForDimensionValue(PurchaseHeader."Person Responsible",ApprovalsBuffer.D1,ApprovalsBuffer.D1V,TotalApprovalUserRole);
+        CreateTempALEforSelfApproval(PurchaseHeader,DocumentType,ApprovalsBuffer,ApprovalEntryTemp,TotalApprovalUserRole);
+        CreateRealALEs(ApprovalEntryTemp,ApprovalEntry);
+        //release the PO
+        IF ApproveDocument(ApprovalEntry,ErrorText) THEN EXIT(TRUE) ELSE ERROR(ErrorText);
+      END ELSE EXIT(ApprovalBufferToALE(PurchaseHeader,ApprovalEntryBudget,ApprovalsBuffer,ErrorText));
+      }
+
+      EXIT(ApprovalBufferToALE(PurchaseHeader,ApprovalEntryBudget,ApprovalsBuffer,ErrorText));
+    END;
+
+    PROCEDURE AppendToBufferTable@1000000008(DocType@1000000002 : 'Document,Line';VAR PurchaseHeader@1000000000 : Record 38;VAR PurchaseLine@1000000005 : Record 39;VAR ApprovalsBuffer@1000000001 : TEMPORARY Record 81014);
+    VAR
+      DocumentType@1000000006 : Record 81001;
+      NextLine@1000000003 : Integer;
+    BEGIN
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+      DocumentType.CALCFIELDS("Approval Dimension 1","Approval Dimension 2");
+
+      ApprovalsBuffer.RESET;
+      CASE DocType OF
+        DocType::Document:
+          BEGIN
+            IF DocumentType."Group by Dimension 1" THEN ApprovalsBuffer.SETRANGE(D1V,PurchaseHeader."Shortcut Dimension 1 Code");
+            IF DocumentType."Group by Dimension 2" THEN ApprovalsBuffer.SETRANGE(D2V,PurchaseHeader."Shortcut Dimension 2 Code");
+            IF NOT ApprovalsBuffer.FINDFIRST THEN BEGIN
+              ApprovalsBuffer.RESET;
+              IF ApprovalsBuffer.FINDLAST THEN NextLine := ApprovalsBuffer.ID + 1 ELSE NextLine :=1;
+              ApprovalsBuffer.INIT;
+              ApprovalsBuffer.ID := NextLine;
+              IF DocumentType."Group by Dimension 1" THEN ApprovalsBuffer.D1V :=PurchaseHeader."Shortcut Dimension 1 Code";
+              IF DocumentType."Group by Dimension 2" THEN ApprovalsBuffer.D2V :=PurchaseHeader."Shortcut Dimension 2 Code";
+              ApprovalsBuffer.D1 := DocumentType."Approval Dimension 1";
+              ApprovalsBuffer.D2 := DocumentType."Approval Dimension 2";
+              ApprovalsBuffer."Approval Template" := PurchaseHeader."Procurement Workflow";
+              ApprovalsBuffer.INSERT;
+            END;
+          END;
+        DocType::Line:
+          BEGIN
+            IF DocumentType."Group by Dimension 1" THEN ApprovalsBuffer.SETRANGE(D1V,PurchaseLine."Shortcut Dimension 1 Code");
+            IF DocumentType."Group by Dimension 2" THEN ApprovalsBuffer.SETRANGE(D2V,PurchaseLine."Shortcut Dimension 2 Code");
+            IF NOT ApprovalsBuffer.FINDFIRST THEN BEGIN
+              ApprovalsBuffer.RESET;
+              IF ApprovalsBuffer.FINDLAST THEN NextLine := ApprovalsBuffer.ID + 1 ELSE NextLine :=1;
+              ApprovalsBuffer.INIT;
+              ApprovalsBuffer.ID := NextLine;
+              IF DocumentType."Group by Dimension 1" THEN ApprovalsBuffer.D1V := PurchaseLine."Shortcut Dimension 1 Code";
+              IF DocumentType."Group by Dimension 2" THEN ApprovalsBuffer.D2V := PurchaseLine."Shortcut Dimension 2 Code";
+              ApprovalsBuffer.D1 := DocumentType."Approval Dimension 1";
+              ApprovalsBuffer.D2 := DocumentType."Approval Dimension 2";
+              ApprovalsBuffer."Approval Template" := PurchaseHeader."Procurement Workflow";
+              ApprovalsBuffer.INSERT;
+            END;
+          END;
+      END;
+    END;
+
+    PROCEDURE PostProcessBufferRecord@1000000004(VAR PurchaseHeader@1000000000 : Record 38;VAR ApprovalsBuffer@1000000001 : TEMPORARY Record 81014);
+    VAR
+      LdecExVAT@1000000002 : Decimal;
+      LdecIncVAT@1000000003 : Decimal;
+      LrecdL@1000000004 : Record 39;
+      LrecSetup@1000000005 : Record 81000;
+      LcduNos@1000000006 : Codeunit 396;
+      LcodBatch@1000000007 : Code[20];
+      LcodD1@1000000008 : Code[20];
+    BEGIN
+      LrecSetup.FINDFIRST;
+      LrecSetup.TESTFIELD(LrecSetup."Appovals Batch");
+      LcodBatch := LcduNos.GetNextNo(LrecSetup."Appovals Batch",TODAY,TRUE);
+
+      LrecdL.RESET;
+      LrecdL.SETRANGE("Document Type",PurchaseHeader."Document Type");
+      LrecdL.SETRANGE("Document No.",PurchaseHeader."No.");
+      IF ApprovalsBuffer.D1V <> '' THEN LrecdL.SETRANGE("Shortcut Dimension 1 Code",ApprovalsBuffer.D1V);
+      IF ApprovalsBuffer.D2V <> '' THEN LrecdL.SETRANGE("Shortcut Dimension 2 Code",ApprovalsBuffer.D2V);
+      //IF ApprovalsBuffer.D3V <> '' THEN LrecdL.SETRANGE("Dimension 3 Value",ApprovalsBuffer.D3V);
+      //IF ApprovalsBuffer.D4V <> '' THEN LrecdL.SETRANGE("Dimension 4 Value",ApprovalsBuffer.D4V);
+      //IF ApprovalsBuffer.D5V <> '' THEN LrecdL.SETRANGE("Dimension 5 Value",ApprovalsBuffer.D5V);
+
+      CLEAR(LdecIncVAT);
+      CLEAR(LdecExVAT);
+      IF LrecdL.FINDSET(TRUE) THEN REPEAT
+        LdecIncVAT := LdecIncVAT + LrecdL."Amount Including VAT";
+        LdecExVAT := LdecExVAT + LrecdL.Amount;
+        LrecdL."Approval Batch" := LcodBatch;
+        LrecdL.MODIFY;
+      UNTIL LrecdL.NEXT =0;
+
+      //TES
+      ApprovalsBuffer."Value Ex. VAT" := LdecExVAT;
+      ApprovalsBuffer."Value Inc. VAT" := LdecIncVAT;
+      ApprovalsBuffer."Batch No." := LcodBatch;
+      ApprovalsBuffer.MODIFY;
+    END;
+
+    PROCEDURE ApprovalBufferToALE@1000000009(VAR PurchaseHeader@1000000003 : Record 38;VAR ApprovalEntry@1000000000 : TEMPORARY Record 454;VAR ApprovalsBuffer@1000000001 : TEMPORARY Record 81014;VAR ErrorText@1000000008 : Text[150]) : Boolean;
+    VAR
+      TotalApprovalWorflow@1000000004 : Record 81009;
+      DocumentType@1000000002 : Record 81001;
+      ApprovalValue@1000000005 : Decimal;
+      LtxtConst001@1000000006 : TextConst 'ENU=About to show Approval Template Workflow lines that qualify from Approval Template %1 for a buffer value of %2 (%3);ENG=About to show Approval Workflow lines that qualify from Document Type %1 for a buffer value of %2 (%3)';
+      LtxtConst002@1000000007 : TextConst 'ENU=No Approval Template Workflow lines qualify from Approval Template %1 for a buffer value of %2;ENG=No Approval Workflow lines qualify from Document Type %1 for a buffer value of %2';
+      AdjustmentFactor@1000000011 : Integer;
+      StandardText@1000000013 : TEMPORARY Record 7;
+      Sequence@1000000014 : Integer;
+      TotalCommunicationFunctions@1000000009 : Codeunit 91000;
+    BEGIN
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+
+      ApprovalsBuffer.RESET;
+      StandardText.RESET;
+      StandardText.DELETEALL;
+
+      IF ApprovalsBuffer.FINDSET(FALSE) THEN REPEAT
+          IF DocumentType."Approval Value" = DocumentType."Approval Value"::Gross THEN
+            ApprovalValue :=ApprovalsBuffer."Value Inc. VAT"
+          ELSE
+            ApprovalValue := ApprovalsBuffer."Value Ex. VAT";
+          //check which Approval workflows apply
+          TotalApprovalWorflow.RESET;
+          TotalApprovalWorflow.SETRANGE(Code,DocumentType."Procurement Workflow");
+          IF NOT TotalApprovalWorflow."No Range Applies" THEN TotalApprovalWorflow.SETFILTER("Value From",'<=%1',ApprovalValue);
+          IF NOT TotalApprovalWorflow."No Range Applies" THEN TotalApprovalWorflow.SETFILTER("Value To",'>=%1',ApprovalValue);
+
+          IF TotalApprovalWorflow.FINDSET(FALSE) THEN BEGIN
+            REPEAT
+              //Create the ALE
+              IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+            UNTIL TotalApprovalWorflow.NEXT =0;
+          END;
+
+          //Test for approvers & escalate if required/permitted
+          ApprovalEntry.RESET;
+          Sequence := TotalApprovalWorflow.Sequence;
+          ApprovalEntry.SETRANGE("Sequence No.",TotalApprovalWorflow.Sequence);
+          IF NOT ApprovalEntry.FINDFIRST THEN BEGIN//ERROR('No Approvers founds!');
+            Sequence += 1;
+            TotalApprovalWorflow.RESET;
+            TotalApprovalWorflow.SETRANGE(Code,DocumentType."Procurement Workflow");
+            TotalApprovalWorflow.SETRANGE(Sequence,Sequence);
+            IF TotalApprovalWorflow.FINDFIRST THEN REPEAT
+              //Create the ALE
+              IF NOT CreateTempALESet(PurchaseHeader,DocumentType,TotalApprovalWorflow,ApprovalsBuffer,ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+            UNTIL (TotalApprovalWorflow.NEXT = 0) OR (ApprovalEntry.COUNT > 0);
+          END;
+        //Build List Of Batches
+        StandardText.INIT;
+        StandardText.Code := ApprovalsBuffer."Batch No.";
+        IF StandardText.INSERT THEN ;
+      UNTIL ApprovalsBuffer.NEXT =0;
+
+      //At this point the ALE temp table has all the batch members so re-index the sequences to zero
+      StandardText.RESET;
+      IF StandardText.FINDFIRST THEN REPEAT
+        IF ApprovalEntry.FINDFIRST THEN BEGIN
+          ApprovalEntry.RESET;
+          ApprovalEntry.SETCURRENTKEY("Batch No.","Sequence No.");
+          ApprovalEntry.SETRANGE("Batch No.",StandardText.Code);
+          ApprovalEntry.ASCENDING(TRUE);
+          ApprovalEntry.FINDFIRST;
+          AdjustmentFactor := 1-ApprovalEntry."Sequence No.";
+        END;
+
+        ApprovalEntry.RESET;
+        ApprovalEntry.SETRANGE("Batch No.",StandardText.Code);
+        IF ApprovalEntry.FINDSET(TRUE) THEN REPEAT
+          ApprovalEntry."Sequence No.":= ApprovalEntry."Sequence No."+ AdjustmentFactor;
+          IF ApprovalEntry."Sequence No." = 1 THEN BEGIN
+            ApprovalEntry.Status := ApprovalEntry.Status::Open;
+            //Add Pending Comm Entry
+            //LcduPendingComms.CreatePendingCommEntryApproval(ApprovalEntry."Approver ID",1,ApprovalEntry."Entry No.",ApprovalEntry."Batch No.");
+          END ELSE
+            ApprovalEntry.Status := ApprovalEntry.Status::Created;
+          ApprovalEntry.MODIFY;
+        UNTIL ApprovalEntry.NEXT = 0;
+      UNTIL StandardText.NEXT = 0;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE CreateTempALESet@1000000010(VAR PurchaseHeader@1000000000 : Record 38;DocumentType@1000000001 : Record 81001;TotalApprovalWorkflow@1000000002 : Record 81009;VAR ApprovalsBuffer@1000000007 : TEMPORARY Record 81014;VAR ApprovalEntry@1000000004 : TEMPORARY Record 454;VAR ErrorText@1000000013 : Text[150]) : Boolean;
+    VAR
+      LtxtConst001@1000000009 : TextConst 'ENU=No people are assigned the Job Responsibility %1 for %2 %3 as required by the mandatory Approval Workflow Line %4';
+      DimensionCode@1000000011 : Code[20];
+      DimensionValueCode@1000000006 : Code[20];
+      TotalApprovalUserRole@1000000005 : Record 81013;
+      LtxtConst002@1000000012 : TextConst 'ENG=Line %1 of the Budget Approval Workflow for Document Type %2 requires a %3 Dimension Value.';
+      TotalApprovalRole@1000000015 : Record 81012;
+      LtxtConst003@1000000018 : TextConst 'ENG=Approval Role %1 does not exist.';
+      LtxtConst004@1000000019 : TextConst 'ENG=Portal User %1 does not exist.';
+      TotalApprovalSetup@1000000023 : Record 81000;
+      UserPersonResp@1000000003 : Record 2000000120;
+      User@1000000008 : Record 91;
+      OKtoCreate@1000000020 : Boolean;
+      Created@1000000021 : Boolean;
+      PRScore@1000000014 : Integer;
+      AppScore@1000000022 : Integer;
+      UserFilter@1000000024 : Text;
+      TotalApprovalUserRoleTestMode@1000000010 : Record 81013;
+      TestModeString@1000000016 : Text;
+    BEGIN
+      TotalApprovalSetup.GET;
+
+      IF NOT TotalApprovalRole.GET(TotalApprovalWorkflow."Approval Role") THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst003,TotalApprovalWorkflow."Approval Role");
+        EXIT(FALSE);
+      END;
+
+      //Get the dimension value (from the buffer rec) for the dimension described on the budget approval workflow line
+      //We need this to work out user role assignment for non-business wide roles.
+      IF NOT TotalApprovalRole.Businesswide THEN BEGIN
+        IF NOT GetDimensionValueFromBufferRec(ApprovalsBuffer,TotalApprovalWorkflow.Dimension,DimensionValueCode) THEN BEGIN
+          ErrorText := STRSUBSTNO(LtxtConst002,TotalApprovalWorkflow.Index,TotalApprovalWorkflow.Code,TotalApprovalWorkflow.Dimension);
+          EXIT(FALSE);
+        END;
+      END;
+
+      //find the people associated with the workflow line and create ALE's for each
+      TotalApprovalUserRole.RESET;
+      TotalApprovalUserRole.SETCURRENTKEY(Dimension,"Dimension Value","Approval Role");
+      IF NOT TotalApprovalRole.Businesswide THEN BEGIN
+        TotalApprovalUserRole.SETRANGE(Dimension,TotalApprovalWorkflow.Dimension);
+        TotalApprovalUserRole.SETRANGE("Dimension Value",DimensionValueCode);
+      END ELSE TotalApprovalUserRole.SETCURRENTKEY("Approval Role");
+      TotalApprovalUserRole.SETRANGE("Approval Role",TotalApprovalWorkflow."Approval Role");
+
+      IF TotalApprovalSetup."Test Mode" THEN BEGIN
+        IF CONFIRM('All people in the Approval Role:\\ ' + ReturnApprovalNames(TotalApprovalUserRole)) THEN;
+      END;
+
+      //Apply exclusion logic
+      CLEAR(UserFilter);
+      IF DocumentType."Person Resp. can't App. Proc." THEN
+        IF UserFilter = '' THEN UserFilter := STRSUBSTNO('<>%1',PurchaseHeader."Person Responsible") ELSE UserFilter := UserFilter+STRSUBSTNO('&<>%1',PurchaseHeader."Person Responsible");
+      IF UserFilter <> '' THEN TotalApprovalUserRole.SETFILTER("TF User",UserFilter);
+      //Get the Seniority level of the Person Responsible
+      UserPersonResp.SETRANGE("User Name",PurchaseHeader."Person Responsible");
+
+      IF TotalApprovalSetup."Test Mode" THEN BEGIN
+        IF CONFIRM('After Exclusion Logic Has Been Applied: \\ ' + ReturnApprovalNames(TotalApprovalUserRole)) THEN;
+      END;
+
+      IF NOT UserPersonResp.FINDFIRST THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst004,PurchaseHeader."Person Responsible");
+        EXIT(FALSE);
+      END;
+
+      CLEAR(PRScore);
+      PRScore := EstSeniority(UserPersonResp."User Name");
+      TotalApprovalSetup.FINDFIRST;
+
+      IF TotalApprovalSetup."Test Mode" THEN BEGIN
+        IF CONFIRM('3: ' + ReturnApprovalNames(TotalApprovalUserRole)) THEN;
+      END;
+
+      //Try to create Temp ALE for all resulting users, respecting seniority logic
+      IF TotalApprovalUserRole.FINDFIRST THEN REPEAT
+        OKtoCreate := TRUE;
+        Created := FALSE;
+        //Apply Seniority Logic
+        IF DocumentType."Approval Mode" <> DocumentType."Approval Mode"::All THEN BEGIN
+          //Get the level of the Approver
+          IF NOT User.GET(TotalApprovalUserRole."TF User") THEN BEGIN
+            ErrorText := STRSUBSTNO(LtxtConst004,TotalApprovalUserRole."TF User");
+            EXIT(FALSE);
+          END;
+          CLEAR(AppScore);
+          AppScore := EstSeniority(User."User ID");
+        END;
+
+        //Apply Logic
+        CASE DocumentType."Approval Mode" OF
+          DocumentType."Approval Mode"::"Equal and Senior Only":
+              IF AppScore > PRScore THEN OKtoCreate := FALSE;
+          DocumentType."Approval Mode"::"Senior Only":
+              BEGIN
+                IF AppScore >= PRScore THEN OKtoCreate := FALSE;
+                IF TotalApprovalSetup."Seniority Score for side Apps" >= PRScore THEN BEGIN
+                  OKtoCreate := TRUE;
+                  IF AppScore > PRScore THEN OKtoCreate := FALSE;
+                END;
+              END;
+        END;
+
+        IF TotalApprovalSetup."Test Mode" THEN BEGIN
+          IF CONFIRM('4: ' + ReturnApprovalNames(TotalApprovalUserRole)) THEN;
+        END;
+        IF OKtoCreate THEN BEGIN
+          //log that at least one ALE has been created for this line
+          Created := TRUE;
+          CreateTempALE(PurchaseHeader,DocumentType,TotalApprovalWorkflow,ApprovalsBuffer,ApprovalEntry,TotalApprovalUserRole);
+        END;
+      UNTIL TotalApprovalUserRole.NEXT =0;
+
+      //if after all the business logic no approvers can be found and the line is "Approval Mandatory" then throw error
+      IF (NOT Created) AND TotalApprovalWorkflow."Approval Mandatory" THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,TotalApprovalWorkflow."Approval Role",TotalApprovalWorkflow.Dimension,DimensionValueCode,TotalApprovalWorkflow.Index);
+        EXIT(FALSE);
+      END;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE GetDimensionValueFromBufferRec@1000000003(ApprovalsBuffer@1000000000 : Record 81014;DimValueToFind@1000000001 : Code[20];VAR DimensionValue@1000000002 : Code[20]) : Boolean;
+    BEGIN
+      CASE DimValueToFind OF
+        ApprovalsBuffer.D1:
+          BEGIN
+            DimensionValue := ApprovalsBuffer.D1V;
+            EXIT(TRUE);
+          END;
+        ApprovalsBuffer.D2:
+          BEGIN
+            DimensionValue := ApprovalsBuffer.D2V;
+            EXIT(TRUE);
+          END;
+        ApprovalsBuffer.D3:
+          BEGIN
+            DimensionValue := ApprovalsBuffer.D3V;
+            EXIT(TRUE);
+          END;
+        ApprovalsBuffer.D4:
+          BEGIN
+            DimensionValue := ApprovalsBuffer.D4V;
+            EXIT(TRUE);
+          END;
+        ApprovalsBuffer.D5:
+          BEGIN
+            DimensionValue := ApprovalsBuffer.D5V;
+            EXIT(TRUE);
+          END;
+        ELSE EXIT(FALSE);
+      END;
+      EXIT(DimensionValue<>'');
+    END;
+
+    PROCEDURE CreateTempALE@1000000014(VAR PurchaseHeader@1000000000 : Record 38;DocumentType@1000000001 : Record 81001;TotalApprovalWorkflow@1000000002 : Record 81009;VAR ApprovalsBuffer@1000000007 : TEMPORARY Record 81014;VAR ApprovalEntry@1000000004 : TEMPORARY Record 454;VAR TotalApprovalUserRole@1000000011 : Record 81013) : Boolean;
+    VAR
+      LtxtConst001@1000000009 : TextConst 'ENU=No people are assigned the Job Responsibility %1 for %2 %3 as required by the mandatory Approval Workflow Line %4';
+      NextLine@1000000010 : Integer;
+      Vendor@1000000005 : Record 23;
+      Customer@1000000003 : Record 18;
+      User@1000000008 : Record 2000000120;
+      UserTA@1000000006 : Record 2000000120;
+      DocumentType_Local@1000000014 : Record 81001;
+      Absence@1000000015 : Record 81011;
+      ApproverCode@1000000016 : Code[50];
+      GeneralLedgerSetup@1000000017 : Record 98;
+      TotalApprovalSetup@1000000012 : Record 81000;
+    BEGIN
+      TotalApprovalSetup.GET;
+      IF TotalApprovalSetup."Test Mode" THEN BEGIN
+        IF CONFIRM('Creating Temp ALE for: ' + TotalApprovalUserRole."TF User") THEN;
+      END;
+
+      ApprovalEntry.RESET;
+      IF ApprovalEntry.FINDLAST THEN NextLine := ApprovalEntry."Entry No." +1 ELSE NextLine := 1;
+
+      //create the ALE from the Buffer Record
+      ApprovalEntry.INIT;
+      ApprovalEntry."Entry No." := NextLine;
+
+      ApprovalEntry."Table ID" := 38;
+      ApprovalEntry."Document No." := PurchaseHeader."No.";
+      ApprovalEntry."Document Type" := PurchaseHeader."Document Type";
+      ApprovalEntry."Batch No." := ApprovalsBuffer."Batch No.";
+      ApprovalEntry."Sequence No." := TotalApprovalWorkflow.Sequence;
+      ApprovalEntry."Dimension 1" :=ApprovalsBuffer.D1;
+      ApprovalEntry.VALIDATE("Dimension Code 1",ApprovalsBuffer.D1V);
+      ApprovalEntry."Dimension 2" :=ApprovalsBuffer.D2;
+      ApprovalEntry.VALIDATE("Dimension Code 2",ApprovalsBuffer.D2V);
+      ApprovalEntry."Proc Approval Type" :=ApprovalEntry."Proc Approval Type"::Budget;
+      ApprovalEntry."Procurement Type" := PurchaseHeader."Procurement Workflow";
+      ApprovalEntry."Workflow Line" := TotalApprovalWorkflow.Index;
+      ApprovalEntry."Approval Code" := TotalApprovalUserRole."Approval Role";
+      ApprovalEntry.VALIDATE("Sender ID",PurchaseHeader.Originator);
+      //Apply Absence substitution Logic
+      CLEAR(ApproverCode);
+      ApproverCode := TotalApprovalUserRole."TF User";
+      REPEAT
+        IF (Absence.GET(ApproverCode,TODAY)) AND (Absence."Delegate User Code" <> '') THEN ApproverCode := Absence."Delegate User Code";
+      UNTIL (NOT Absence.GET(ApproverCode,TODAY));
+      ApprovalEntry.VALIDATE("Approver ID",ApproverCode);
+
+      ApprovalEntry."Date-Time Sent for Approval" := CURRENTDATETIME;
+      ApprovalEntry."Due Date" := CALCDATE(TotalApprovalWorkflow."Due Date",TODAY());
+      CASE DocumentType_Local."Approval Value" OF
+        DocumentType_Local."Approval Value"::Net:ApprovalEntry.Amount := ApprovalsBuffer."Value Ex. VAT";
+        DocumentType_Local."Approval Value"::Gross:ApprovalEntry.Amount := ApprovalsBuffer."Value Inc. VAT";
+      END;
+      ApprovalEntry."Amount (LCY)" := ApprovalEntry.Amount;
+      ApprovalEntry."Value Net" := ApprovalsBuffer."Value Ex. VAT";
+      ApprovalEntry."Value Gross" := ApprovalsBuffer."Value Inc. VAT";
+      ApprovalEntry."Record ID to Approve" := PurchaseHeader.RECORDID;
+      ApprovalEntry.INSERT;
+    END;
+
+    PROCEDURE CreateRealALEs@1000000013(VAR ApprovalEntryTemp@1000000000 : TEMPORARY Record 454;VAR ApprovalEntry@1000000005 : Record 454);
+    VAR
+      LintID@1000000001 : Integer;
+      TotalCommunicationFunctions@1000000002 : Codeunit 91000;
+      TotalCommunicationSetup@1000000003 : Record 91000;
+    BEGIN
+      ApprovalEntryTemp.RESET;
+      IF ApprovalEntryTemp.FINDFIRST THEN BEGIN
+        ApprovalEntry.RESET;
+        ApprovalEntry.LOCKTABLE;
+        IF ApprovalEntry.FINDLAST THEN LintID := ApprovalEntry."Entry No." +1 ELSE LintID := 1;
+        REPEAT
+          //Create ALE
+          ApprovalEntry.INIT;
+          ApprovalEntry := ApprovalEntryTemp;
+          ApprovalEntry."Entry No." := LintID;
+          ApprovalEntry.INSERT;
+          //Total Communications
+          CASE ApprovalEntryTemp.Status OF
+            ApprovalEntryTemp.Status::Open:TotalCommunicationFunctions.RecordHandlerApprovals(ApprovalEntry."Entry No.",0,2,FALSE);
+          END;
+          LintID +=1;
+        UNTIL ApprovalEntryTemp.NEXT =0;
+      END;
+    END;
+
+    PROCEDURE CreateTempPersRespALE@1000000039(VAR PurchaseHeader@1000000000 : Record 38;VAR ApprovalEntryTemp@1000000004 : TEMPORARY Record 454) : Boolean;
+    VAR
+      LtxtConst001@1000000009 : TextConst 'ENU=No people are assigned the Job Responsibility %1 for %2 %3 as required by the mandatory Approval Workflow Line %4';
+      NextLine@1000000010 : Integer;
+      Vendor@1000000005 : Record 23;
+      Customer@1000000003 : Record 18;
+      DocumentType@1000000014 : Record 81001;
+      Absence@1000000015 : Record 81011;
+      ApproverCode@1000000016 : Code[50];
+      GeneralLedgerSetup@1000000017 : Record 98;
+      NoSeriesManagement@1000000001 : Codeunit 396;
+      TotalApprovalSetup@1000000002 : Record 81000;
+    BEGIN
+      ApprovalEntryTemp.RESET;
+      IF ApprovalEntryTemp.FINDLAST THEN NextLine := ApprovalEntryTemp."Entry No." +1 ELSE NextLine := 1;
+
+      //create the ALE from the Buffer Record
+      ApprovalEntryTemp.INIT;
+      ApprovalEntryTemp."Entry No." := NextLine;
+      ApprovalEntryTemp."Table ID" := 38;
+      ApprovalEntryTemp."Document No." := PurchaseHeader."No.";
+      ApprovalEntryTemp."Document Type" := PurchaseHeader."Document Type";
+
+      TotalApprovalSetup.FINDFIRST;
+      ApprovalEntryTemp."Batch No." := NoSeriesManagement.GetNextNo(TotalApprovalSetup."Appovals Batch",TODAY,TRUE);
+      ApprovalEntryTemp."Sequence No." := 1;
+      ApprovalEntryTemp."Proc Approval Type" := ApprovalEntryTemp."Proc Approval Type"::Budget;
+      ApprovalEntryTemp."Procurement Type" := PurchaseHeader."Procurement Workflow";
+      ApprovalEntryTemp.VALIDATE("Sender ID",PurchaseHeader.Originator);
+      CLEAR(ApproverCode);
+      ApproverCode := PurchaseHeader."Person Responsible";
+      ApprovalEntryTemp.VALIDATE("Approver ID",ApproverCode);
+      ApprovalEntryTemp."Date-Time Sent for Approval" := CURRENTDATETIME;
+      CASE DocumentType."Approval Value" OF
+        DocumentType."Approval Value"::Net:ApprovalEntryTemp.Amount := PurchaseHeader.Amount;
+        DocumentType."Approval Value"::Gross:ApprovalEntryTemp.Amount := PurchaseHeader."Amount Including VAT";
+      END;
+      ApprovalEntryTemp."Amount (LCY)" := ApprovalEntryTemp.Amount;
+      ApprovalEntryTemp."Value Net" := PurchaseHeader.Amount;
+      ApprovalEntryTemp."Value Gross" := PurchaseHeader."Amount Including VAT";
+      ApprovalEntryTemp."Record ID to Approve" := PurchaseHeader.RECORDID;
+      ApprovalEntryTemp.Status := ApprovalEntryTemp.Status::Open;
+      ApprovalEntryTemp.INSERT;
+    END;
+
+    PROCEDURE CancelALE@1000000023(DocType@1000000002 : Integer;DocID@1000000001 : Code[20]);
+    VAR
+      ApprovalEntry@1000000000 : Record 454;
+      PurchaseHeader@1000000003 : Record 38;
+      ReleasePurchaseDocument@1000000004 : Codeunit 415;
+    BEGIN
+      ApprovalEntry.RESET;
+      ApprovalEntry.SETRANGE("Document Type",DocType);
+      ApprovalEntry.SETRANGE("Document No.",DocID);
+      ApprovalEntry.SETFILTER(Status,'<>%1',ApprovalEntry.Status::Canceled);
+      IF ApprovalEntry.FINDSET(FALSE) THEN BEGIN
+        ApprovalEntry.MODIFYALL(ApprovalEntry.Status,ApprovalEntry.Status::Canceled,TRUE);
+        IF PurchaseHeader.GET(DocType,DocID) THEN BEGIN
+          IF PurchaseHeader.Status <> PurchaseHeader.Status::Open THEN ReleasePurchaseDocument.Reopen(PurchaseHeader);
+          PurchaseHeader.MODIFY;
+        END;
+      END;
+    END;
+
+    PROCEDURE CancelDocument@1000000032(VAR PurchaseHeader@1000000001 : Record 38;ShowMessage@1000000000 : Boolean) : Boolean;
+    VAR
+      ApprovalEntry@1000000002 : Record 454;
+      LtxtConst002@1000000003 : TextConst 'ENU=%1 %2 approval request cancelled.;ENG=%1 %2 approval request cancelled.';
+      LtxtConst005@1000000007 : TextConst 'ENU=Only %1 or a Portal Administrator can cancel this document''s approvals.';
+      LtxtConst130@1000000004 : TextConst 'ENU=The approval request cannot be cancelled because the order has already been approved and released.;ENG=The approval request cannot be cancelled because the order has already been released. To modify this order, you must reopen it.';
+      LtxtConst131@1000000005 : TextConst 'ENU=Are you sure you want to cancel the outstanding approvals and reopen this document?;ENG=Are you sure you want to cancel the outstanding approvals and reopen this document?';
+      UserSetup@1000000006 : Record 91;
+    BEGIN
+      IF NOT CONFIRM(LtxtConst131) THEN EXIT(FALSE);
+      IF PurchaseHeader.Status <> PurchaseHeader.Status::Released THEN BEGIN
+        //Only pers resp or admin can cancel
+          IF (PurchaseHeader.Originator <> USERID) THEN BEGIN
+            UserSetup.GET(USERID);
+            IF (NOT UserSetup."TA Administrator") THEN BEGIN
+              ERROR(STRSUBSTNO(LtxtConst005,PurchaseHeader.Originator));
+              EXIT(FALSE)
+            END;
+          END;
+
+          WITH PurchaseHeader DO BEGIN
+          ApprovalEntry.SETCURRENTKEY("Table ID","Document Type","Document No.","Sequence No.");
+          ApprovalEntry.SETRANGE("Table ID",DATABASE::"Purchase Header");
+          ApprovalEntry.SETRANGE("Document Type","Document Type");
+          ApprovalEntry.SETRANGE("Document No.","No.");
+          ApprovalEntry.SETFILTER(Status,'<>%1&<>%2',ApprovalEntry.Status::Rejected,ApprovalEntry.Status::Canceled);
+          IF ApprovalEntry.FIND('-') THEN BEGIN
+            REPEAT
+              ApprovalEntry.Status := ApprovalEntry.Status::Canceled;
+              ApprovalEntry."Last Date-Time Modified" := CREATEDATETIME(TODAY,TIME);
+              ApprovalEntry."Last Modified By User ID" := USERID;
+              ApprovalEntry.MODIFY;
+            UNTIL ApprovalEntry.NEXT = 0;
+          END;
+
+          Status := Status::Open;
+          MODIFY(TRUE);
+        END;
+        IF ShowMessage THEN
+          MESSAGE(LtxtConst002,PurchaseHeader."Document Type",PurchaseHeader."No.");
+        EXIT(TRUE);
+      END
+      ELSE
+        ERROR(LtxtConst130)
+    END;
+
+    PROCEDURE "ApplyTemplate-Commercial"@1000000020(VAR PurchaseHeader@1000000004 : Record 38;ApprovalTemplate@1000000002 : Record 81008;VAR ErrorText@1000000000 : Text[150];VAR ApprovalEntry@1000000001 : TEMPORARY Record 454) : Boolean;
+    VAR
+      ApprovalsBuffer@1000000005 : TEMPORARY Record 81014;
+      NextLine@1000000007 : Integer;
+      TotalApprovalSetup@1000000008 : Record 81000;
+      BatchCode@1000000009 : Code[20];
+      NoSeriesManagement@1000000010 : Codeunit 396;
+    BEGIN
+      IF DocMatchesAppTemplate(PurchaseHeader."Document Type",PurchaseHeader."No.",ApprovalTemplate) THEN BEGIN
+        TotalApprovalSetup.FINDFIRST;
+        TotalApprovalSetup.TESTFIELD("Appovals Batch");
+        BatchCode := NoSeriesManagement.GetNextNo(TotalApprovalSetup."Appovals Batch",TODAY,TRUE);
+        IF NOT ApplyTWtoDoc(PurchaseHeader,ApprovalTemplate,BatchCode,ErrorText,ApprovalEntry) THEN EXIT(FALSE);
+      END;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE DocMatchesAppTemplate@1000000021(ProcType@1000000009 : Integer;ProcHeader@1000000000 : Code[20];ApprovalTemplate@1000000001 : Record 81008) : Boolean;
+    VAR
+      LrrfRecord@1000000005 : RecordRef;
+      LfrfDocType@1000000004 : FieldRef;
+      LfrfDocNo@1000000002 : FieldRef;
+      QualificationCriteria@1000000003 : Record 81010;
+      LfrfField@1000000006 : ARRAY [20] OF FieldRef;
+      LintFieldIndex@1000000007 : Integer;
+      LtxtFilter@1000000008 : Text[100];
+    BEGIN
+      //getting the procurement lines
+      LrrfRecord.OPEN(39);
+      LrrfRecord.RESET;
+
+      LfrfDocType := LrrfRecord.FIELD(1);
+      LfrfDocType.SETRANGE(ProcType);
+      LfrfDocNo := LrrfRecord.FIELD(3);
+      LfrfDocNo.SETRANGE(ProcHeader);
+      IF LrrfRecord.FINDFIRST THEN;
+
+      QualificationCriteria.RESET;
+      QualificationCriteria.SETRANGE(Code,ApprovalTemplate.Code);
+      IF QualificationCriteria.COUNT = 0 THEN EXIT;
+      IF QualificationCriteria.FINDSET(FALSE) THEN BEGIN
+        LintFieldIndex:=1;
+        REPEAT
+          LfrfField[LintFieldIndex] := LrrfRecord.FIELD(QualificationCriteria."Field ID");
+          CASE QualificationCriteria."Field ID" OF
+            25 : LfrfField[LintFieldIndex].CALCFIELD;
+          END;
+          //LfrfField[LintFieldIndex].SETFILTER(LrecQC."Parameter Value");
+
+          CLEAR(LtxtFilter);
+          LtxtFilter :=STRSUBSTNO('%1%2',QualificationCriteria.Operator,QualificationCriteria."Parameter Value");
+          LfrfField[LintFieldIndex].SETFILTER(LtxtFilter);
+
+          //IF CONFIRM('%1 filtered by %2\Records left = %3',TRUE,LfrfField[LintFieldIndex].NAME,LrecQC."Parameter Value",FORMAT(LrrfRecord.COUNT))THEN
+          LintFieldIndex+=1;
+        UNTIL QualificationCriteria.NEXT =0;
+      END;
+
+      EXIT(LrrfRecord.FINDFIRST);
+    END;
+
+    PROCEDURE ApplyTWtoDoc@1000000024(VAR PurchaseHeader@1000000001 : Record 38;ApprovalTemplate@1000000000 : Record 81008;BatchCode@1000000004 : Code[20];VAR ErrorText@1000000003 : Text[150];VAR ApprovalEntryTemp@1000000010 : TEMPORARY Record 454) : Boolean;
+    VAR
+      TemplateApprovalWorkflow@1000000002 : Record 81016;
+      DimensionValueCode@1000000005 : Code[20];
+      LtxtConst001@1000000006 : TextConst 'ENG=Line %3 of Commercial Approval %1 requires a %2 Dimension to be specified on the document header.';
+      TotalApprovalUserRole@1000000007 : Record 81013;
+      LtxtConst002@1000000008 : TextConst 'ENG=No people are assigned the Job Responsibility %1 for %2 %3 as required by the mandatory Approval Workflow Line %4';
+      ApprovalEntry@1000000009 : Record 454;
+      DocumentType@1000000025 : Record 81001;
+      NextLine@1000000011 : Integer;
+      TotalApprovalRole@1000000012 : Record 81012;
+      LtxtConst003@1000000013 : TextConst 'ENG=Approval Role %1 does not exist.';
+      LtxtConst004@1000000016 : TextConst 'ENG=Portal User %1 does not exist.';
+      Vendor@1000000021 : Record 23;
+      Customer@1000000020 : Record 18;
+      ApproverCode@1000000024 : Code[50];
+      Absence@1000000023 : Record 81011;
+      TotalCommunicationFunctions@1000000022 : Codeunit 91000;
+      UserSetupPR@1000000014 : Record 91;
+      UserSetupApprover@1000000015 : Record 91;
+    BEGIN
+      TemplateApprovalWorkflow.RESET;
+      TemplateApprovalWorkflow.SETRANGE(Code,ApprovalTemplate.Code);
+      IF TemplateApprovalWorkflow.FINDSET(TRUE) THEN REPEAT
+        IF NOT TotalApprovalRole.GET(TemplateApprovalWorkflow."Approval Role") THEN BEGIN
+          ErrorText := STRSUBSTNO(LtxtConst003,TemplateApprovalWorkflow."Approval Role");
+          EXIT(FALSE);
+        END;
+        IF NOT TotalApprovalRole.Businesswide THEN BEGIN
+          IF NOT GetDimensionValueFromDocument(PurchaseHeader."Dimension Set ID",TemplateApprovalWorkflow.Dimension,DimensionValueCode) THEN BEGIN
+            ErrorText := STRSUBSTNO(LtxtConst001,ApprovalTemplate.Code,TemplateApprovalWorkflow.Dimension,TemplateApprovalWorkflow.Index);
+          END;
+        END;
+        //find the people associated with the workflow line and create ALE's for each
+        TotalApprovalUserRole.RESET;
+        TotalApprovalUserRole.SETCURRENTKEY(Dimension,"Dimension Value","Approval Role");
+        IF NOT TotalApprovalRole.Businesswide THEN BEGIN
+          TotalApprovalUserRole.SETRANGE(Dimension,TemplateApprovalWorkflow.Dimension);
+          TotalApprovalUserRole.SETRANGE("Dimension Value",DimensionValueCode);
+        END ELSE TotalApprovalUserRole.SETCURRENTKEY("Approval Role");
+        TotalApprovalUserRole.SETRANGE("Approval Role",TemplateApprovalWorkflow."Approval Role");
+
+        //Apply exclusion logic
+        IF ApprovalTemplate."Person Resp. can't App. Proc." THEN TotalApprovalUserRole.SETFILTER("TF User",'<>%1',PurchaseHeader."Person Responsible");
+        IF ApprovalTemplate."Raised By can't App. Proc." THEN TotalApprovalUserRole.SETFILTER("TF User",'<>%1',PurchaseHeader.Originator);
+
+        //Apply Seniority Logic
+        IF ApprovalTemplate."Approval Mode" <> ApprovalTemplate."Approval Mode"::All THEN BEGIN
+          //Get the level of the Person Responsible
+          IF NOT UserSetupPR.GET(PurchaseHeader."Person Responsible") THEN BEGIN
+            ErrorText := STRSUBSTNO(LtxtConst004,PurchaseHeader."Person Responsible");
+            EXIT(FALSE);
+          END;
+          //Get the level of the Approver
+          IF NOT UserSetupApprover.GET(TotalApprovalUserRole."TF User") THEN BEGIN
+            ErrorText := STRSUBSTNO(LtxtConst004,TotalApprovalUserRole."TF User");
+            EXIT(FALSE);
+          END;
+        END;
+        //Apply Logic
+        //if after all the business logic no approvers can be found and the line is "Approval Mandatory" then throw error
+        IF NOT TotalApprovalUserRole.FINDFIRST THEN BEGIN
+          ErrorText := STRSUBSTNO(LtxtConst002,TemplateApprovalWorkflow."Approval Role",TemplateApprovalWorkflow.Dimension,DimensionValueCode,TemplateApprovalWorkflow.Index);
+          EXIT(FALSE);
+        END ELSE REPEAT
+          //Apply Absence substitution Logic
+          CLEAR(ApproverCode);
+          ApproverCode := TotalApprovalUserRole."TF User";
+          REPEAT
+            IF (Absence.GET(ApproverCode,TODAY)) AND (Absence."Delegate User Code" <> '') THEN ApproverCode := Absence."Delegate User Code";
+          UNTIL NOT Absence.GET(ApproverCode,TODAY);
+
+          ApprovalEntryTemp.RESET;
+          IF ApprovalEntryTemp.FINDLAST THEN NextLine := ApprovalEntryTemp."Entry No." +1 ELSE NextLine := 1;
+          ApprovalEntryTemp.INIT;
+          ApprovalEntryTemp."Entry No." := NextLine;
+          ApprovalEntryTemp.INSERT(TRUE);
+          DocumentType.GET(PurchaseHeader."Procurement Workflow");
+          ApprovalEntryTemp."Table ID" := 38;
+          ApprovalEntryTemp."Document Type":= PurchaseHeader."Document Type";
+          ApprovalEntryTemp."Document No." := PurchaseHeader."No.";
+          ApprovalEntryTemp.VALIDATE("Sender ID",PurchaseHeader.Originator);
+          ApprovalEntryTemp.VALIDATE("Approver ID",ApproverCode);
+          ApprovalEntryTemp."Date-Time Sent for Approval" := CURRENTDATETIME;
+          ApprovalEntryTemp."Due Date" := CALCDATE(TemplateApprovalWorkflow."Due Date",TODAY());
+          ApprovalEntryTemp."Approval Code" := TemplateApprovalWorkflow."Approval Role";
+          ApprovalEntryTemp."Batch No." := BatchCode;
+          ApprovalEntryTemp."Sequence No." := TemplateApprovalWorkflow.Sequence;
+          ApprovalEntryTemp."Procurement Type" := PurchaseHeader."Procurement Workflow";
+          ApprovalEntryTemp."Workflow Line" := TemplateApprovalWorkflow.Index;
+          ApprovalEntryTemp."Proc Approval Type" := ApprovalEntryTemp."Proc Approval Type"::Commercial;
+          ApprovalEntryTemp."Dimension 1 Description" := ApprovalTemplate.Description;
+          ApprovalEntryTemp."Dimension 2 Description" := ApprovalTemplate.Code;
+          ApprovalEntryTemp.Amount := PurchaseHeader.Amount;
+          ApprovalEntryTemp."Amount (LCY)" := PurchaseHeader.Amount;
+          ApprovalEntryTemp."Record ID to Approve" := PurchaseHeader.RECORDID;
+          IF ApprovalEntryTemp."Sequence No." = 1 THEN BEGIN
+            ApprovalEntryTemp.Status := ApprovalEntry.Status::Open;
+            TotalCommunicationFunctions.RecordHandlerApprovals(ApprovalEntry."Entry No.",1,0,FALSE);
+          END ELSE
+            ApprovalEntryTemp.Status := ApprovalEntryTemp.Status::Created;
+          ApprovalEntryTemp.MODIFY;
+        UNTIL TotalApprovalUserRole.NEXT =0;
+      UNTIL TemplateApprovalWorkflow.NEXT =0;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE GetDimensionValueFromDocument@1000000026(DimSet@1000000000 : Integer;DimValueToFind@1000000001 : Code[20];VAR DimensionValueCode@1000000002 : Code[20]) : Boolean;
+    VAR
+      DimensionSetEntry@1000000003 : Record 480;
+    BEGIN
+      DimensionSetEntry.RESET;
+      IF NOT DimensionSetEntry.GET(DimSet,DimValueToFind) THEN EXIT(FALSE);
+      DimensionValueCode := DimensionSetEntry."Dimension Value Code";
+      EXIT(DimensionValueCode <> '');
+    END;
+
+    PROCEDURE AutoApproveCheck@1000000022(DocumentType@1000000002 : Integer;DocNo@1000000001 : Code[20];VAR ErrorText@1000000003 : Text[250]);
+    VAR
+      ApprovalEntry@1000000000 : Record 454;
+      TotalApprovalSetup@1000000004 : Record 81000;
+    BEGIN
+      TotalApprovalSetup.FINDFIRST;
+      ApprovalEntry.RESET;
+      ApprovalEntry.SETRANGE("Table ID",38);
+      ApprovalEntry.SETRANGE("Document Type",DocumentType);
+      ApprovalEntry.SETRANGE("Document No.",DocNo);
+      ApprovalEntry.SETRANGE(Status,ApprovalEntry.Status::Open);
+      ApprovalEntry.SETRANGE("Approval Code",TotalApprovalSetup."Auto Approval Role");
+      IF ApprovalEntry.FINDFIRST THEN Approve(ApprovalEntry."Entry No.",ErrorText);
+    END;
+
+    PROCEDURE EstSeniority@1000000028(UserCode@1000000000 : Code[50]) : Integer;
+    VAR
+      TotalApprovalUserRole@1000000001 : Record 81013;
+      TotalApprovalRole@1000000002 : Record 81012;
+      Score@1000000003 : Integer;
+      RoleCode@1000000004 : Code[30];
+    BEGIN
+      Score := 9999;
+      TotalApprovalUserRole.RESET;
+      TotalApprovalUserRole.SETRANGE("TF User",UserCode);
+      IF TotalApprovalUserRole.FINDFIRST THEN REPEAT
+        IF TotalApprovalRole.GET(TotalApprovalUserRole."Approval Role") THEN BEGIN
+          IF TotalApprovalRole."Seniority Level" < Score THEN BEGIN
+            Score := TotalApprovalRole."Seniority Level";
+            RoleCode := TotalApprovalRole.Code;
+          END;
+        END;
+      UNTIL TotalApprovalUserRole.NEXT = 0;
+      EXIT(Score);
+    END;
+
+    PROCEDURE Open@1000000006(VAR ApprovalEntry@1000000000 : Record 454;Reason@1000000001 : 'Standard,ProxyEntryReopened');
+    VAR
+      Local_ApprovalEntry@1000000002 : Record 454;
+    BEGIN
+      //Set the status on this ALE to be open
+      Local_ApprovalEntry := ApprovalEntry;
+      Local_ApprovalEntry.VALIDATE(Status,Local_ApprovalEntry.Status::Open);
+      Local_ApprovalEntry.MODIFY;
+    END;
+
+    PROCEDURE Approve@1000000017(ApprovalEntryNo@1000000000 : Integer;VAR ErrorText@1000000002 : Text[150]) : Boolean;
+    VAR
+      ApprovalEntry@1000000001 : Record 454;
+      LtxtConst001@1000000003 : TextConst 'ENU=Unable to find Approval ledger Entry %1.;ENG=Unable to find Approval ledger Entry %1.';
+      DimensionTemplateDetail@1000000004 : Record 81009;
+      LtxtConst002@1000000006 : TextConst 'ENU=Unable to find Budget Approval Workflow line %1 %2.;ENG=Unable to find Budget Approval Workflow line %1 %2.';
+      LtxtConst003@1000000007 : TextConst 'ENU=Unable to find Template Approval Workflow line %1 %2.;ENG=Unable to find Template Approval Workflow line %1 %2.';
+      TotalApprovalSetup@1000000015 : Record 81000;
+      DocumentNo@1000000009 : Code[20];
+      Local_ErrorText@1000000010 : Text[150];
+      LtxtConst004@1000000011 : TextConst 'ENU="Only records where Status = Open can be approved.";ENG="Only records where Status = Open can be approved."';
+      DocumentType@1000000013 : Record 81001;
+      UserSetup@1000000005 : Record 91;
+      LtxtConst005@1000000012 : TextConst 'ENU=Only approver %1 or an Admin can approve this Approval Ledger Entry';
+    BEGIN
+      IF NOT ApprovalEntry.GET(ApprovalEntryNo) THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApprovalEntryNo);
+        EXIT(FALSE);
+      END;
+
+      IF ApprovalEntry.Status <> ApprovalEntry.Status::Open THEN BEGIN
+        ErrorText := LtxtConst004;
+        EXIT(FALSE);
+      END;
+
+      IF (ApprovalEntry."Approver ID" <> USERID) AND (ApprovalEntry."Approval Code" <> TotalApprovalSetup."Auto Approval Role") THEN BEGIN
+        UserSetup.GET(USERID);
+        IF (NOT UserSetup."TA Administrator") THEN BEGIN
+          ErrorText := STRSUBSTNO(LtxtConst005,ApprovalEntry."Approver ID");
+          EXIT(FALSE)
+        END;
+      END;
+
+      DocumentType.RESET;
+      IF NOT DocumentType.GET(ApprovalEntry."Procurement Type") THEN ERROR('No Document type exists on the approval ledger entry');
+      CASE DocumentType."Budget Approval Type" OF
+        DocumentType."Budget Approval Type"::"By Person Responsible": EXIT(ApproveByPersonResp(ApprovalEntryNo,ErrorText));
+        DocumentType."Budget Approval Type"::None:;
+        ELSE EXIT(ApproveByWorkflow(ApprovalEntryNo,ErrorText));
+      END;
+    END;
+
+    PROCEDURE ApproveByWorkflow@1000000018(ApprovalEntryNo@1000000000 : Integer;VAR ErrorText@1000000002 : Text[150]) : Boolean;
+    VAR
+      ApprovalEntry@1000000001 : Record 454;
+      LtxtConst001@1000000003 : TextConst 'ENG=Unable to find Approval ledger Entry %1.';
+      ApprovalEntry1@1000000008 : Record 454;
+      ApprovalEntry2@1000000014 : Record 454;
+      TotalApprovalWorkflow@1000000004 : Record 81009;
+      TemplateApprovalWorkflow@1000000005 : Record 81016;
+      LtxtConst002@1000000006 : TextConst 'ENG=Unable to find Budget Approval Workflow line %1 %2.';
+      LtxtConst003@1000000007 : TextConst 'ENG=Unable to find Template Approval Workflow line %1 %2.';
+      DocumentNo@1000000009 : Code[20];
+      Local_ErrorText@1000000010 : Text[150];
+      LtxtConst004@1000000011 : TextConst 'ENG="Only records where Status = Open can be approved."';
+      DocumentType@1000000013 : Record 81001;
+      Counter@1000000015 : Integer;
+    BEGIN
+      IF NOT ApprovalEntry.GET(ApprovalEntryNo) THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApprovalEntryNo);
+        EXIT(FALSE);
+      END;
+
+      IF ApprovalEntry.Status <> ApprovalEntry.Status::Open THEN BEGIN
+        ErrorText := LtxtConst004;
+        EXIT(FALSE);
+      END;
+
+      //Promote the status on this ALE
+      ApprovalEntry.VALIDATE(Status,ApprovalEntry.Status::Approved);
+      ApprovalEntry.MODIFY;
+
+      //Check if the BAW/TAW allows proxy approval of other batch sequence records
+      CASE ApprovalEntry."Proc Approval Type" OF
+        ApprovalEntry."Proc Approval Type"::Budget:
+          BEGIN
+            IF NOT TotalApprovalWorkflow.GET(ApprovalEntry."Procurement Type",ApprovalEntry."Workflow Line") THEN BEGIN
+              ErrorText := STRSUBSTNO(LtxtConst002,ApprovalEntry."Approval Code",ApprovalEntry."Workflow Line");
+              EXIT(FALSE);
+            END;
+            IF TotalApprovalWorkflow."Approve All Sequence Members" THEN BEGIN
+              ApprovalEntry1.RESET;
+              ApprovalEntry1.SETRANGE("Batch No.",ApprovalEntry."Batch No.");
+              ApprovalEntry1.SETRANGE("Sequence No.",ApprovalEntry."Sequence No.");
+              ApprovalEntry1.SETRANGE(Status,ApprovalEntry1.Status::Open);
+              IF ApprovalEntry1.FINDSET(TRUE) THEN REPEAT
+                IF ApprovalEntry1."Entry No." <> ApprovalEntry."Entry No." THEN "Approve(Proxy)"(ApprovalEntry1,ApprovalEntry);
+              UNTIL ApprovalEntry1.NEXT =0;
+            END;
+          END;
+        ApprovalEntry."Proc Approval Type"::Commercial:
+          BEGIN
+            IF NOT TemplateApprovalWorkflow.GET(ApprovalEntry."Dimension 2 Description",ApprovalEntry."Workflow Line") THEN BEGIN
+              ErrorText := STRSUBSTNO(LtxtConst003,ApprovalEntry."Approval Code",ApprovalEntry."Workflow Line");
+              EXIT(FALSE);
+            END;
+            IF TemplateApprovalWorkflow."Approve All Sequence Members" THEN BEGIN
+              ApprovalEntry1.RESET;
+              ApprovalEntry1.SETRANGE("Batch No.",ApprovalEntry."Batch No.");
+              ApprovalEntry1.SETRANGE("Sequence No.",ApprovalEntry."Sequence No.");
+              ApprovalEntry1.SETRANGE(Status,ApprovalEntry1.Status::Open);
+              IF ApprovalEntry1.FINDSET(TRUE) THEN REPEAT
+                IF ApprovalEntry1."Entry No." <> ApprovalEntry."Entry No." THEN "Approve(Proxy)"(ApprovalEntry1,ApprovalEntry);
+              UNTIL ApprovalEntry1.NEXT =0;
+            END;
+          END;
+      END;
+
+      //If batch sequence is complete then try to open the next sequence
+      ApprovalEntry1.RESET;
+      ApprovalEntry1.SETCURRENTKEY("Batch No.","Sequence No.",Status);
+      ApprovalEntry1.SETRANGE("Batch No.",ApprovalEntry."Batch No.");
+      ApprovalEntry1.SETRANGE("Sequence No.",ApprovalEntry."Sequence No.");
+      ApprovalEntry1.SETRANGE(Status,ApprovalEntry.Status::Open);
+      IF NOT ApprovalEntry1.FINDFIRST THEN BEGIN
+        ApprovalEntry1.RESET;
+        ApprovalEntry1.SETCURRENTKEY("Batch No.","Sequence No.",Status);
+        ApprovalEntry1.SETRANGE("Batch No.",ApprovalEntry."Batch No.");
+        ApprovalEntry1.SETRANGE("Sequence No.",ApprovalEntry."Sequence No." + 1);
+        ApprovalEntry1.SETRANGE(Status,ApprovalEntry.Status::Created);
+        Counter := 2;
+        IF NOT ApprovalEntry1.FINDSET THEN REPEAT
+          ApprovalEntry1.RESET;
+          ApprovalEntry1.SETCURRENTKEY("Batch No.","Sequence No.",Status);
+          ApprovalEntry1.SETRANGE("Batch No.",ApprovalEntry."Batch No.");
+          ApprovalEntry1.SETRANGE("Sequence No.",ApprovalEntry."Sequence No." + Counter);
+          ApprovalEntry1.SETRANGE(Status,ApprovalEntry.Status::Created);
+          Counter += 1;
+        UNTIL (ApprovalEntry1.NEXT > 0) OR (Counter = 10);
+        IF ApprovalEntry1.FINDSET(TRUE) THEN REPEAT
+          Open(ApprovalEntry1,0);
+        UNTIL ApprovalEntry1.NEXT =0;
+      END;
+
+      //Is this the last ALE to approve then promote the document to approved
+      ApprovalEntry1.RESET;
+      ApprovalEntry1.SETRANGE("Table ID",38);
+      ApprovalEntry1.SETRANGE("Document Type",ApprovalEntry."Document Type");
+      ApprovalEntry1.SETRANGE("Document No.",ApprovalEntry."Document No.");
+      ApprovalEntry1.SETFILTER(Status,'%1|%2',ApprovalEntry.Status::Created,ApprovalEntry.Status::Open);
+      IF NOT ApprovalEntry1.FINDFIRST THEN BEGIN
+        IF NOT ApproveDocument(ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+      END;
+
+      DocumentType.GET(ApprovalEntry."Procurement Type");
+      CASE DocumentType."Approval Sequence" OF
+        DocumentType."Approval Sequence"::"Commercial then Budget":
+          BEGIN
+            //find sequence 1 ALEs of type budget at status pending and activate them
+            ApprovalEntry1.RESET;
+            ApprovalEntry1.SETRANGE("Table ID",38);
+            ApprovalEntry1.SETRANGE("Document Type",ApprovalEntry."Document Type");
+            ApprovalEntry1.SETRANGE("Document No.",ApprovalEntry."Document No.");
+            ApprovalEntry1.SETRANGE(Status,ApprovalEntry.Status::Created);
+            ApprovalEntry1.SETRANGE("Sequence No.",1);
+            ApprovalEntry1.SETRANGE("Proc Approval Type",ApprovalEntry1."Proc Approval Type"::Budget);
+            IF ApprovalEntry1.FINDSET(FALSE) THEN REPEAT
+              ApprovalEntry2.GET(ApprovalEntry1."Entry No.");
+              ApprovalEntry2.VALIDATE(Status,ApprovalEntry2.Status::Open);
+              ApprovalEntry2.MODIFY;
+            UNTIL ApprovalEntry1.NEXT =0;
+          END;
+        DocumentType."Approval Sequence"::"Budget then Commercial":
+          BEGIN
+            //find sequence 1 ALEs of type budget at status pending and activate them
+            ApprovalEntry1.RESET;
+            ApprovalEntry1.SETRANGE("Table ID",38);
+            ApprovalEntry1.SETRANGE("Document Type",ApprovalEntry."Document Type");
+            ApprovalEntry1.SETRANGE("Document No.",ApprovalEntry."Document No.");
+            ApprovalEntry1.SETRANGE(Status,ApprovalEntry.Status::Created);
+            ApprovalEntry1.SETRANGE("Sequence No.",1);
+            ApprovalEntry1.SETRANGE("Proc Approval Type",ApprovalEntry1."Proc Approval Type"::Commercial);
+            IF ApprovalEntry1.FINDSET(FALSE) THEN REPEAT
+              ApprovalEntry2.GET(ApprovalEntry1."Entry No.");
+              ApprovalEntry2.VALIDATE(Status,ApprovalEntry2.Status::Open);
+              ApprovalEntry2.MODIFY;
+            UNTIL ApprovalEntry1.NEXT =0;
+          END;
+      END;
+
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE "Approve(Proxy)"@1000000005(VAR ApprovalEntry@1000000000 : Record 454;ApprovalEntryApprove@1000000001 : Record 454);
+    VAR
+      Local_ApprovalEntry@1000000002 : Record 454;
+    BEGIN
+      Local_ApprovalEntry := ApprovalEntry;
+      Local_ApprovalEntry.VALIDATE(Status,Local_ApprovalEntry.Status::"Proxy Approved");
+      Local_ApprovalEntry."Proxy Action By" := ApprovalEntryApprove."Approver ID";
+      Local_ApprovalEntry."Proxy Action On" := TODAY;
+      Local_ApprovalEntry."Proxy Action ID" := ApprovalEntryApprove."Entry No.";
+      Local_ApprovalEntry.MODIFY;
+    END;
+
+    PROCEDURE ApproveByPersonResp@1000000033(ApprovalEntryID@1000000001 : Integer;VAR ErrorText@1000000000 : Text[150]) : Boolean;
+    VAR
+      ApprovalEntry@1000000003 : Record 454;
+      LtxtConst001@1000000004 : TextConst 'ENG=Unable to find Approval ledger Entry %1.';
+      LtxtConst004@1000000005 : TextConst 'ENG="Only records where Status = Open can be approved."';
+      ApprovalEntry1@1000000006 : Record 454;
+    BEGIN
+      IF NOT ApprovalEntry.GET(ApprovalEntryID) THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApprovalEntryID);
+        EXIT(FALSE);
+      END;
+
+      IF ApprovalEntry.Status <> ApprovalEntry.Status::Open THEN BEGIN
+        ErrorText := LtxtConst004;
+        EXIT(FALSE);
+      END;
+
+      //Promote the status on this ALE
+      ApprovalEntry.VALIDATE(Status,ApprovalEntry.Status::Approved);
+      ApprovalEntry.MODIFY;
+
+      //Approve Document
+      IF NOT ApproveDocument(ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+    END;
+
+    PROCEDURE ApproveDocument@1000000007(ApprovalEntry@1000000000 : Record 454;VAR ErrorText@1000000001 : Text[150]) : Boolean;
+    VAR
+      LtxtConst001@1000000003 : TextConst 'ENU=Document %1 does not exist.;ENG=Document %1 does not exist.';
+      LtxtConst002@1000000002 : TextConst 'ENU=Document Type %1 does not exist.';
+      DocumentType@1000000004 : Record 81001;
+      PurchaseHeader@1000000005 : Record 38;
+      ReleasePurchaseDocument@1000000006 : Codeunit 415;
+      TotalCommunicationFunctions@1000000007 : Codeunit 91000;
+      PurchPost@1000000008 : Codeunit 90;
+      LtxtConst003@1000000009 : TextConst 'ENU="%1 %2 has been scheduled for posting "';
+    BEGIN
+      IF NOT PurchaseHeader.GET(ApprovalEntry."Document Type",ApprovalEntry."Document No.") THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApprovalEntry."Document No.");
+        EXIT(FALSE);
+      END;
+      IF NOT DocumentType.GET(ApprovalEntry."Procurement Type") THEN BEGIN
+        ErrorText:=STRSUBSTNO(LtxtConst002,ApprovalEntry."Procurement Type");
+        EXIT(FALSE);
+      END;
+
+      CASE DocumentType."Maps to NAV Type" OF
+        DocumentType."Maps to NAV Type"::"Purchase Order":
+        BEGIN
+          ReleasePurchaseDocument.PerformManualRelease(PurchaseHeader);
+        END;
+        DocumentType."Maps to NAV Type"::"Purchase Invoice":
+        BEGIN
+          ReleasePurchaseDocument.PerformManualRelease(PurchaseHeader);
+          IF DocumentType."Invoice Post on Approval" THEN BEGIN
+            PurchaseHeader.VALIDATE(Invoice , TRUE);
+            PurchaseHeader.VALIDATE(Receive , TRUE);
+            CODEUNIT.RUN(90,PurchaseHeader);
+            IF GUIALLOWED THEN MESSAGE(STRSUBSTNO(LtxtConst003,FORMAT(DocumentType."Procurement Workflow"),FORMAT(PurchaseHeader."No.")));
+          END;
+        END;
+        DocumentType."Maps to NAV Type"::"Purchase Credit":
+        BEGIN
+          ReleasePurchaseDocument.PerformManualRelease(PurchaseHeader);
+          IF DocumentType."Invoice Post on Approval" THEN BEGIN
+            PurchaseHeader.VALIDATE(Invoice , TRUE);
+            PurchaseHeader.VALIDATE(Receive , TRUE);
+            CODEUNIT.RUN(90,PurchaseHeader);
+            IF GUIALLOWED THEN MESSAGE(STRSUBSTNO(LtxtConst003,FORMAT(DocumentType."Procurement Workflow"),FORMAT(PurchaseHeader."No.")));
+          END;
+        END;
+        ELSE ReleasePurchaseDocument.PerformManualRelease(PurchaseHeader);
+      END;
+
+      // Total Communications
+      TotalCommunicationFunctions.RecordHandlerApprovals(ApprovalEntry."Entry No.",1,0,FALSE);
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE ApproveRecordApprovalRequest@48(RecordID@1000 : RecordID;DocumentType@1000000003 : 'Approve,Reject,Delegate';ErrorText@1000000002 : Text);
+    VAR
+      ApprovalEntry@1001 : Record 454;
+      ApprovalsMgmt@1000000000 : Codeunit 1535;
+      NoReqToApproveErr@1000000001 : TextConst 'ENU=There is no approval request to approve.;ENG=There is no approval request to approve.';
+    BEGIN
+      IF NOT ApprovalsMgmt.FindOpenApprovalEntryForCurrUser(ApprovalEntry,RecordID) THEN
+        ERROR(NoReqToApproveErr);
+
+      ApprovalEntry.SETRECFILTER;
+      CASE DocumentType OF
+        DocumentType::Approve:Approve(ApprovalEntry."Entry No.",ErrorText);
+        DocumentType::Reject:Reject(ApprovalEntry."Entry No.",ErrorText);
+        DocumentType::Delegate:Delegate(ApprovalEntry."Entry No.",ErrorText);
+      END;
+    END;
+
+    PROCEDURE Reject@1000000016(ApproveEntryID@1000000000 : Integer;VAR ErrorText@1000000002 : Text[150]) : Boolean;
+    VAR
+      ApprovalEntry@1000000001 : Record 454;
+      LtxtConst001@1000000003 : TextConst 'ENG=Unable to find Approval ledger Entry %1.';
+      ApprovalEntry1@1000000008 : Record 454;
+      ApprovalEntry2@1000000014 : Record 454;
+      LtxtConst002@1000000006 : TextConst 'ENG=Unable to find Budget Approval Workflow line %1 %2.';
+      LtxtConst003@1000000007 : TextConst 'ENG=Unable to find Template Approval Workflow line %1 %2.';
+      DocumentNo@1000000009 : Code[20];
+      Local_ErrorText@1000000010 : Text[150];
+      LtxtConst004@1000000011 : TextConst 'ENG="Only records where Status = Open can be approved."';
+      RejectReason@1000000005 : Text[150];
+      DocumentType@1000000013 : Record 81001;
+      RejectionReason@1000000012 : Page 81047;
+    BEGIN
+      IF NOT ApprovalEntry.GET(ApproveEntryID) THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApproveEntryID);
+        EXIT(FALSE);
+      END;
+
+      IF ApprovalEntry.Status <> ApprovalEntry.Status::Open THEN BEGIN
+        ErrorText := LtxtConst004;
+        EXIT(FALSE);
+      END;
+
+      RejectionReason.LOOKUPMODE := TRUE;
+      IF RejectionReason.RUNMODAL = ACTION::LookupCancel THEN EXIT(FALSE);
+      RejectionReason.GetValue(Local_ErrorText);
+
+      EXIT(RejectByWorkflow(ApproveEntryID,Local_ErrorText,ErrorText));
+    END;
+
+    PROCEDURE RejectByWorkflow@1000000012(ApprovalEntryID@1000000000 : Integer;RejectionReason@1000000015 : Text[250];VAR ErrorText@1000000002 : Text[150]) : Boolean;
+    VAR
+      ApprovalEntry@1000000001 : Record 454;
+      LtxtConst001@1000000003 : TextConst 'ENG=Unable to find Approval ledger Entry %1.';
+      ApprovalEntry1@1000000008 : Record 454;
+      ApprovalEntry2@1000000014 : Record 454;
+      TotalApprovalWorkflow@1000000004 : Record 81009;
+      TemplateApprovalWorkflow@1000000005 : Record 81016;
+      LtxtConst002@1000000006 : TextConst 'ENG=Unable to find Budget Approval Workflow line %1 %2.';
+      LtxtConst003@1000000007 : TextConst 'ENG=Unable to find Template Approval Workflow line %1 %2.';
+      DocumentNo@1000000009 : Code[20];
+      Local_ErrorText@1000000010 : Text[150];
+      LtxtConst004@1000000011 : TextConst 'ENU="Only records where Status = Open can be rejected.";ENG="Only records where Status = Open can be approved."';
+      DocumentType@1000000013 : Record 81001;
+      LtxtConst005@1000000012 : TextConst 'ENU=Please provide a reason for rejection;ENG=Please provide a reason for rejection';
+    BEGIN
+      IF NOT ApprovalEntry.GET(ApprovalEntryID) THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApprovalEntryID);
+        EXIT(FALSE);
+      END;
+
+      IF ApprovalEntry.Status <> ApprovalEntry.Status::Open THEN BEGIN
+        ErrorText := LtxtConst004;
+        EXIT(FALSE);
+      END;
+
+      IF RejectionReason = '' THEN ERROR(LtxtConst005);
+
+      //Promote the status on this ALE
+      ApprovalEntry.VALIDATE(Status,ApprovalEntry.Status::Rejected);
+      ApprovalEntry."Approver Comment" := RejectionReason;
+      ApprovalEntry.MODIFY;
+
+      //Reject Lines that are not already Cancelled
+      ApprovalEntry1.SETRANGE("Document No.",ApprovalEntry."Document No.");
+      ApprovalEntry1.SETFILTER(Status,'<>Canceled');
+      IF ApprovalEntry1.FINDFIRST THEN REPEAT
+        IF ApprovalEntry1."Entry No." <> ApprovalEntry."Entry No." THEN "Reject(Proxy)"(ApprovalEntry1,ApprovalEntry);
+      UNTIL ApprovalEntry1.NEXT =0;
+
+      //Reject Document
+      IF NOT RejectDocument(ApprovalEntry,ErrorText) THEN EXIT(FALSE);
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE "Reject(Proxy)"@1000000011(VAR ApprovalEntry@1000000000 : Record 454;ApprovalEntryApprove@1000000001 : Record 454);
+    VAR
+      Local_ApprovalEntry@1000000002 : Record 454;
+    BEGIN
+      Local_ApprovalEntry := ApprovalEntry;
+      Local_ApprovalEntry.VALIDATE(Status,Local_ApprovalEntry.Status::"Proxy Rejected");
+      Local_ApprovalEntry."Proxy Action By" := ApprovalEntryApprove."Approver ID";
+      Local_ApprovalEntry."Proxy Action On" := TODAY;
+      Local_ApprovalEntry."Proxy Action ID" := ApprovalEntryApprove."Entry No.";
+      Local_ApprovalEntry.MODIFY;
+    END;
+
+    PROCEDURE RejectDocument@1000000025(ApprovalEntry@1000000000 : Record 454;VAR ErrorText@1000000001 : Text[150]) : Boolean;
+    VAR
+      DocumentType@1000000004 : Record 81001;
+      PurchaseHeader@1000000003 : Record 38;
+      ReleasePurchaseDocument@1000000002 : Codeunit 415;
+      LtxtConst001@1000000006 : TextConst 'ENU=Unable to find Approval ledger Entry %1.;ENG=Unable to find Approval ledger Entry %1.';
+      LtxtConst002@1000000005 : TextConst 'ENU=Unable to find Budget Approval Workflow line %1 %2.;ENG=Unable to find Budget Approval Workflow line %1 %2.';
+      TotalCommunicationFunctions@1000000007 : Codeunit 91000;
+      LtxtConst003@1000000008 : TextConst 'ENU=Rejected Document;ENG=Rejected Document';
+    BEGIN
+      IF NOT PurchaseHeader.GET(ApprovalEntry."Document Type",ApprovalEntry."Document No.") THEN BEGIN
+        ErrorText:=STRSUBSTNO(LtxtConst001,ApprovalEntry."Document No.");
+        EXIT(FALSE);
+      END;
+      IF NOT DocumentType.GET(ApprovalEntry."Procurement Type") THEN BEGIN
+        ErrorText:=STRSUBSTNO(LtxtConst002,ApprovalEntry."Procurement Type");
+        EXIT(FALSE);
+      END;
+
+      CASE DocumentType."Maps to NAV Type" OF
+        DocumentType."Maps to NAV Type"::"Purchase Order": ReleasePurchaseDocument.Reopen(PurchaseHeader);
+        DocumentType."Maps to NAV Type"::"Purchase Invoice": ReleasePurchaseDocument.Reopen(PurchaseHeader);
+        DocumentType."Maps to NAV Type"::"Purchase Credit": ReleasePurchaseDocument.Reopen(PurchaseHeader);
+        DocumentType."Maps to NAV Type"::Expenses:;
+        ELSE ReleasePurchaseDocument.Reopen(PurchaseHeader);
+      END;
+
+      // Total Communications
+      TotalCommunicationFunctions.RecordHandlerApprovals(ApprovalEntry."Entry No.",2,0,FALSE);
+
+      //Stamp Document
+      PurchaseHeader."Error Text" := LtxtConst003;
+      PurchaseHeader.MODIFY;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE Delegate@1000000019(ApprovalEntryID@1000000001 : Integer;VAR ErrorText@1000000000 : Text[150]) : Boolean;
+    VAR
+      Local_ErrorText@1000000010 : Text;
+      UserSetup@1000000009 : Record 91;
+      ApprovalEntry@1000000007 : Record 454;
+      ApprovalEntryTemp@1000000005 : TEMPORARY Record 454;
+      UserCode@1000000003 : Code[50];
+      ApprovalEntryMod@1000000002 : Record 454;
+      LtxtConst005@1000000012 : TextConst 'ENU=You are not authorised to delegate this approval ledger entry for "%1".  You must be setup as Portal Admin';
+      LtxtConst006@1000000011 : TextConst 'ENU=Delegated by %1 on %2';
+      LtxtConst007@1000000004 : TextConst 'ENU=Approval Entry does not exist;ENG=Approval Entry does not exist';
+    BEGIN
+      IF NOT ApprovalEntryMod.GET(ApprovalEntryID) THEN BEGIN
+        ErrorText := LtxtConst007;
+        EXIT;
+      END;
+
+      //Identify user has permission
+      UserSetup.GET(USERID);
+      IF NOT UserSetup."TA Administrator" THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst005,ApprovalEntryMod."Approver ID");
+        //EXIT(FALSE);
+      END;
+
+      //Identify possible delegates equal and above
+      GetDelegationUsers(ApprovalEntryMod."Entry No.",UserCode,Local_ErrorText);
+      IF Local_ErrorText <> '' THEN ERROR(Local_ErrorText);
+      IF UserCode = '' THEN EXIT;
+
+      //create an open ALE to the delegate (return the id)
+      ApprovalEntryTemp.DELETEALL;
+      ApprovalEntryTemp.INIT;
+      ApprovalEntryTemp := ApprovalEntryMod;
+      ApprovalEntryTemp.VALIDATE("Approver ID",UserCode);
+      ApprovalEntryTemp.INSERT;
+
+      CreateRealALEs(ApprovalEntryTemp,ApprovalEntry);
+
+      ApprovalEntry.VALIDATE(Status);
+      ApprovalEntryMod.VALIDATE(Status,ApprovalEntryMod.Status::Delegated);
+      ApprovalEntryMod.MODIFY;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE GetDelegationUsers@1000000015(ApprovalEntryID@1000000000 : Integer;VAR UserCode@1000000010 : Code[50];VAR ErrorText@1000000003 : Text[250]);
+    VAR
+      ApprovalEntry@1000000007 : Record 454;
+      TotalApprovalRole@1000000001 : Record 81012;
+      TotalApprovalRoleFilter@1000000004 : Record 81012;
+      TotalApprovalUserRole@1000000002 : Record 81013;
+      TotalApprovalUserRoleTemp@1000000005 : TEMPORARY Record 81013;
+      PurchaseHeader@1000000008 : Record 38;
+      DocumentType@1000000009 : Record 81001;
+      TAUserApprovalRoleMtx@1000000006 : Page 81043;
+      LtxtConst001@1000000011 : TextConst 'ENU=Approval Ledger Entry %1 does not exist in the Approval Ledger Entry table;ENG=Approval Ledger Entry %1 does not exist in the Approval Ledger Entry table';
+      LtxtConst002@1000000012 : TextConst 'ENU=Approval Role %1 does not exist in the approval role table;ENG=Approval Role %1 does not exist in the approval role table';
+      LtxtConst003@1000000013 : TextConst 'ENU=No alternate approvers are available for approval role %1;ENG=No alternate approvers are available for approval role %1';
+    BEGIN
+      IF NOT ApprovalEntry.GET(ApprovalEntryID) THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst001,ApprovalEntryID);
+        EXIT;
+      END;
+      IF NOT TotalApprovalRole.GET(ApprovalEntry."Approval Code")THEN BEGIN
+        ErrorText := STRSUBSTNO(LtxtConst002,ApprovalEntry."Approval Code");
+        EXIT;
+      END;
+      TotalApprovalUserRoleTemp.DELETEALL;
+
+      TotalApprovalRoleFilter.RESET;
+      TotalApprovalRoleFilter.SETFILTER("Seniority Level",'<= %1',TotalApprovalRole."Seniority Level");
+      TotalApprovalRoleFilter.SETCURRENTKEY("Seniority Level");
+      TotalApprovalRoleFilter.ASCENDING(TRUE);
+      IF TotalApprovalRoleFilter.FINDFIRST THEN REPEAT
+        CASE TotalApprovalRoleFilter."Seniority Level" OF
+        0:;
+        ELSE
+          BEGIN
+            TotalApprovalUserRole.RESET;
+            TotalApprovalUserRole.SETRANGE("Approval Role",TotalApprovalRole.Code);
+            IF TotalApprovalUserRole.FINDFIRST THEN REPEAT
+              TotalApprovalUserRoleTemp.RESET;
+              TotalApprovalUserRoleTemp.SETRANGE("TF User",TotalApprovalUserRole."TF User");
+              IF NOT TotalApprovalUserRoleTemp.FINDFIRST THEN BEGIN
+                TotalApprovalUserRoleTemp.INIT;
+                TotalApprovalUserRoleTemp."TF User" := TotalApprovalUserRole."TF User";
+                TotalApprovalUserRoleTemp."Approval Role" := TotalApprovalUserRole."Approval Role";
+                TotalApprovalUserRoleTemp.Dimension := '';
+                IF TotalApprovalUserRoleTemp.INSERT THEN;
+              END;
+            UNTIL TotalApprovalUserRole.NEXT = 0;
+          END;
+        END;
+      UNTIL TotalApprovalRole.NEXT = 0;
+
+      //apply exclusion logic
+      PurchaseHeader.GET(ApprovalEntry."Document Type",ApprovalEntry."Document No.");
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+
+      TotalApprovalUserRoleTemp.RESET;
+      TotalApprovalUserRoleTemp.SETRANGE("TF User",ApprovalEntry."Approval Code");
+      IF TotalApprovalUserRoleTemp.FINDFIRST THEN TotalApprovalUserRoleTemp.DELETEALL;
+
+      IF DocumentType."Person Resp. can't App. Proc." THEN BEGIN
+        TotalApprovalUserRoleTemp.RESET;
+        TotalApprovalUserRoleTemp.SETRANGE("TF User",PurchaseHeader."Person Responsible");
+        IF TotalApprovalUserRoleTemp.FINDFIRST THEN TotalApprovalUserRoleTemp.DELETEALL;
+      END;
+
+      IF DocumentType."Raised By can't App. Proc." THEN BEGIN
+        TotalApprovalUserRoleTemp.RESET;
+        TotalApprovalUserRoleTemp.SETRANGE("TF User",PurchaseHeader."Person Responsible");
+        IF TotalApprovalUserRoleTemp.FINDFIRST THEN TotalApprovalUserRoleTemp.DELETEALL;
+      END;
+
+      TotalApprovalUserRoleTemp.RESET;
+      IF TotalApprovalUserRoleTemp.COUNT = 0 THEN BEGIN
+        ErrorText := (STRSUBSTNO(LtxtConst003,ApprovalEntry."Approval Code"));
+        EXIT;
+      END;
+      TotalApprovalUserRoleTemp.RESET;
+      IF PAGE.RUNMODAL(81043,TotalApprovalUserRoleTemp)  = ACTION::LookupCancel THEN EXIT;
+      UserCode := TotalApprovalUserRoleTemp."TF User";
+    END;
+
+    PROCEDURE ApprovalMessage@1000000037(Table_ID@1000000001 : Integer;Document_No@1000000002 : Code[20]);
+    VAR
+      ApprovalEntry@1000000000 : Record 454;
+      IntId@1000000003 : Integer;
+      Approvers@1000000004 : Text;
+      LtxtConst011@1000000006 : TextConst 'ENU=Submitted for approval. Approvers in this sequence: \%1';
+      LtxtConst012@1000000005 : TextConst 'ENU=Seq:%1 %2 %3: %4\';
+    BEGIN
+      ApprovalEntry.RESET;
+      ApprovalEntry.SETRANGE("Table ID",Table_ID);
+      ApprovalEntry.SETRANGE("Document No.",Document_No);
+      ApprovalEntry.SETFILTER(Status,'%1|%2',ApprovalEntry.Status::Open,ApprovalEntry.Status::Created);
+      IF ApprovalEntry.FINDFIRST THEN REPEAT
+        IntId += 1;
+        ApprovalEntry.CALCFIELDS(Approver);
+        Approvers += STRSUBSTNO(LtxtConst012,FORMAT(ApprovalEntry."Sequence No."),ApprovalEntry."Approval Code",ApprovalEntry.Approver,FORMAT(ApprovalEntry.Status));
+      UNTIL ApprovalEntry.NEXT = 0;
+
+      MESSAGE(STRSUBSTNO(LtxtConst011,Approvers));
+    END;
+
+    [EventSubscriber(Table,352,OnAfterInsertEvent)]
+    LOCAL PROCEDURE DefaultDimensionTableOnInsertSubscriber@1000000029(VAR Rec@1000000000 : Record 352;RunTrigger@1000000001 : Boolean);
+    BEGIN
+      CASE Rec."Table ID" OF
+        15: UpdateCatalogueDimension(Rec,1);
+        27: UpdateCatalogueDimension(Rec,2);
+        5400: UpdateCatalogueDimension(Rec,3);
+      END;
+    END;
+
+    [EventSubscriber(Table,352,OnAfterDeleteEvent)]
+    LOCAL PROCEDURE DefaultDimensionTableOnDeleteSubscriber@1000000030(VAR Rec@1000000000 : Record 352;RunTrigger@1000000001 : Boolean);
+    BEGIN
+      CASE Rec."Table ID" OF
+        15: DeleteCatalogueDimension(Rec,1);
+        27: DeleteCatalogueDimension(Rec,2);
+        5400: DeleteCatalogueDimension(Rec,3);
+      END;
+    END;
+
+    [EventSubscriber(Table,352,OnAfterRenameEvent)]
+    LOCAL PROCEDURE DefaultDimensionTableOnRenameSubscriber@1000000031(VAR Rec@1000000000 : Record 352;VAR xRec@1000000001 : Record 352;RunTrigger@1000000002 : Boolean);
+    BEGIN
+      CASE Rec."Table ID" OF
+        15: UpdateCatalogueDimension(Rec,1);
+        27: UpdateCatalogueDimension(Rec,2);
+        5400: UpdateCatalogueDimension(Rec,3);
+      END;
+    END;
+
+    [EventSubscriber(Table,352,OnAfterModifyEvent)]
+    LOCAL PROCEDURE DefaultDimensionTableOnModifySubscriber@1000000036(VAR Rec@1000000000 : Record 352;VAR xRec@1000000001 : Record 352;RunTrigger@1000000002 : Boolean);
+    BEGIN
+      CASE Rec."Table ID" OF
+        15: UpdateCatalogueDimension(Rec,1);
+        27: UpdateCatalogueDimension(Rec,2);
+        5400: UpdateCatalogueDimension(Rec,3);
+      END;
+    END;
+
+    LOCAL PROCEDURE UpdateCatalogueDimension@1000000034(DefaultDimension@1000000002 : Record 352;CatalogueType@1000000003 : ' ,G/L Account,Item,Fixed Asset,Charge Item');
+    VAR
+      TotalApprovalDimensions@1000000001 : Record 81018;
+      CatalogueLine@1000000000 : Record 81003;
+    BEGIN
+      CatalogueLine.RESET;
+      CatalogueLine.SETRANGE(Type,CatalogueType);
+      CatalogueLine.SETRANGE("No.",DefaultDimension."No.");
+      IF CatalogueLine.FINDFIRST THEN REPEAT
+        TotalApprovalDimensions.RESET;
+        TotalApprovalDimensions.SETRANGE(Catalogue,CatalogueLine."Catalogue Code");
+        TotalApprovalDimensions.SETRANGE(Index,CatalogueLine.Index);
+        TotalApprovalDimensions.SETRANGE("Dimension Code",DefaultDimension."Dimension Code");
+        IF NOT TotalApprovalDimensions.FINDFIRST THEN BEGIN
+          TotalApprovalDimensions.INIT;
+            TotalApprovalDimensions.VALIDATE(Catalogue,CatalogueLine."Catalogue Code");
+            TotalApprovalDimensions.VALIDATE(Index,CatalogueLine.Index);
+            TotalApprovalDimensions.VALIDATE("Dimension Code",DefaultDimension."Dimension Code");
+            TotalApprovalDimensions.VALIDATE("Dimension Value Code",DefaultDimension."Dimension Value Code");
+          TotalApprovalDimensions.INSERT;
+        END ELSE BEGIN
+          TotalApprovalDimensions.VALIDATE("Dimension Value Code",DefaultDimension."Dimension Value Code");
+          TotalApprovalDimensions.MODIFY;
+        END;
+      UNTIL CatalogueLine.NEXT = 0;
+    END;
+
+    LOCAL PROCEDURE DeleteCatalogueDimension@1000000038(DefaultDimension@1000000003 : Record 352;CatalogueType@1000000002 : ' ,G/L Account,Item,Fixed Asset,Charge Item');
+    VAR
+      TotalApprovalDimensions@1000000001 : Record 81018;
+      CatalogueLine@1000000000 : Record 81003;
+    BEGIN
+      CatalogueLine.RESET;
+      CatalogueLine.SETRANGE(Type,CatalogueType);
+      CatalogueLine.SETRANGE("No.",DefaultDimension."No.");
+      IF CatalogueLine.FINDFIRST THEN REPEAT
+        TotalApprovalDimensions.RESET;
+        TotalApprovalDimensions.SETRANGE(Catalogue,CatalogueLine."Catalogue Code");
+        TotalApprovalDimensions.SETRANGE(Index,CatalogueLine.Index);
+        TotalApprovalDimensions.SETRANGE("Dimension Code",DefaultDimension."Dimension Code");
+        TotalApprovalDimensions.DELETEALL;
+      UNTIL CatalogueLine.NEXT = 0;
+    END;
+
+    LOCAL PROCEDURE ReturnApprovalNames@1000000035(VAR TotalApprovalUserRole@1000000000 : Record 81013) : Text;
+    VAR
+      ApprovalListText@1000000001 : Text;
+      TotalApprovalUserRole_Local@1000000002 : Record 81013;
+    BEGIN
+      TotalApprovalUserRole_Local.COPY(TotalApprovalUserRole);
+
+      IF TotalApprovalUserRole_Local.FINDFIRST THEN REPEAT
+        IF ApprovalListText = '' THEN ApprovalListText := TotalApprovalUserRole_Local."TF User" ELSE ApprovalListText := ApprovalListText + ',' + TotalApprovalUserRole_Local."TF User";
+      UNTIL TotalApprovalUserRole_Local.NEXT = 0;
+
+      EXIT(ApprovalListText);
+    END;
+
+    LOCAL PROCEDURE GetUserRoleForDimensionValue@1000000040(TAUser@1000000000 : Code[50];ApprovalDimension@1000000001 : Code[20];ApprovalDimensionValue@1000000002 : Code[20];VAR TotalApprovalUserRole@1000000005 : Record 81013) : Boolean;
+    BEGIN
+      TotalApprovalUserRole.RESET;
+      TotalApprovalUserRole.SETRANGE("TF User",TAUser);
+      TotalApprovalUserRole.SETRANGE(Dimension,ApprovalDimension);
+      TotalApprovalUserRole.SETRANGE("Dimension Value",ApprovalDimensionValue);
+      IF TotalApprovalUserRole.FINDFIRST THEN EXIT(TRUE) ELSE EXIT(FALSE);
+    END;
+
+    LOCAL PROCEDURE UserCanSelfApprove@1000000041(PurchaseHeader@1000000000 : Record 38;DocumentType@1000000003 : Record 81001;VAR ApprovalsBuffer@1000000001 : TEMPORARY Record 81014) : Boolean;
+    VAR
+      BudgetApprovalWorkflow@1000000004 : Record 81009;
+      TotalApprovalUserRole@1000000005 : Record 81013;
+      CanSelfApprove@1000000002 : Boolean;
+      ApprovalValue@1000000006 : Decimal;
+    BEGIN
+      //current only works for Approval by Document
+      CASE DocumentType."Budget Approval Type" OF
+        DocumentType."Budget Approval Type"::"By Document":;
+        ELSE EXIT(FALSE);
+      END;
+
+      //check the Doc. Type value for Person Resp can't approve
+      IF DocumentType."Person Resp. can't App. Proc." THEN EXIT(FALSE);
+
+      //there shoud only be one record in the ApprovalsBuffer table as this is "By document". Get the role for the user for this dimension value
+      IF NOT ApprovalsBuffer.FINDFIRST THEN EXIT(FALSE);
+      IF NOT GetUserRoleForDimensionValue(PurchaseHeader."Person Responsible",ApprovalsBuffer.D1,ApprovalsBuffer.D1V,TotalApprovalUserRole) THEN EXIT(FALSE);
+
+      //check the value band for the approval role for the document type against the approval amount
+      BudgetApprovalWorkflow.RESET;
+      BudgetApprovalWorkflow.SETRANGE(Code,DocumentType."Procurement Workflow");
+      BudgetApprovalWorkflow.SETRANGE("Approval Role",TotalApprovalUserRole."Approval Role");
+      IF BudgetApprovalWorkflow.FINDFIRST THEN BEGIN
+        CASE DocumentType."Approval Value" OF
+          DocumentType."Approval Value"::Gross:ApprovalValue := ApprovalsBuffer."Value Inc. VAT";
+          DocumentType."Approval Value"::Net:ApprovalValue := ApprovalsBuffer."Value Ex. VAT";
+        END;
+        CanSelfApprove := (BudgetApprovalWorkflow."Value To" >= ApprovalValue);
+      END ELSE EXIT(FALSE);
+
+      IF NOT CanSelfApprove THEN EXIT(FALSE);
+
+      //Only self approved if this is the only BudgetApprovalWorkflow that applies
+      BudgetApprovalWorkflow.RESET;
+      BudgetApprovalWorkflow.SETRANGE(Code,DocumentType."Procurement Workflow");
+      BudgetApprovalWorkflow.SETFILTER("Approval Role",'<>%1',TotalApprovalUserRole."Approval Role");
+      BudgetApprovalWorkflow.SETFILTER("Value From",'<=%1',ApprovalValue);
+      BudgetApprovalWorkflow.SETFILTER("Value To",'>=%1',ApprovalValue);
+      IF BudgetApprovalWorkflow.FINDFIRST THEN EXIT(FALSE) ELSE EXIT(TRUE);
+    END;
+
+    PROCEDURE CreateTempALEforSelfApproval@1000000042(VAR PurchaseHeader@1000000000 : Record 38;DocumentType@1000000001 : Record 81001;VAR ApprovalsBuffer@1000000007 : TEMPORARY Record 81014;VAR ApprovalEntry@1000000004 : TEMPORARY Record 454;VAR TotalApprovalUserRole@1000000011 : Record 81013) : Boolean;
+    VAR
+      LtxtConst001@1000000009 : TextConst 'ENU=No people are assigned the Job Responsibility %1 for %2 %3 as required by the mandatory Approval Workflow Line %4';
+      NextLine@1000000010 : Integer;
+      Vendor@1000000005 : Record 23;
+      Customer@1000000003 : Record 18;
+      User@1000000008 : Record 2000000120;
+      UserTA@1000000006 : Record 2000000120;
+      DocumentType_Local@1000000014 : Record 81001;
+      GeneralLedgerSetup@1000000017 : Record 98;
+      TotalApprovalSetup@1000000012 : Record 81000;
+    BEGIN
+      //GetUserRoleForDimensionValue(PurchaseHeader."Person Responsible",ApprovalsBuffer.D1,ApprovalsBuffer.D1V,ApprovalRole)
+
+      TotalApprovalSetup.GET;
+      IF TotalApprovalSetup."Test Mode" THEN BEGIN
+        IF CONFIRM('Creating Self Approval Temp ALE for: ' + TotalApprovalUserRole."TF User") THEN;
+      END;
+
+      ApprovalEntry.RESET;
+      IF ApprovalEntry.FINDLAST THEN NextLine := ApprovalEntry."Entry No." +1 ELSE NextLine := 1;
+
+      //create the ALE from the Buffer Record
+      ApprovalEntry.INIT;
+      ApprovalEntry."Entry No." := NextLine;
+      ApprovalEntry.INSERT;
+      ApprovalEntry."Table ID" := 38;
+      ApprovalEntry."Document No." := PurchaseHeader."No.";
+      ApprovalEntry."Document Type" := PurchaseHeader."Document Type";
+      ApprovalEntry."Batch No." := ApprovalsBuffer."Batch No.";
+      //ApprovalEntry."Sequence No." := TotalApprovalWorkflow.Sequence;
+      ApprovalEntry."Dimension 1" :=ApprovalsBuffer.D1;
+      ApprovalEntry.VALIDATE("Dimension Code 1",ApprovalsBuffer.D1V);
+      ApprovalEntry."Dimension 2" :=ApprovalsBuffer.D2;
+      ApprovalEntry.VALIDATE("Dimension Code 2",ApprovalsBuffer.D2V);
+      ApprovalEntry."Proc Approval Type" :=ApprovalEntry."Proc Approval Type"::Budget;
+      ApprovalEntry."Procurement Type" := PurchaseHeader."Procurement Workflow";
+      //ApprovalEntry."Workflow LAne" := TotalApprovalWorkflow.Index;
+      ApprovalEntry."Approval Code" := TotalApprovalUserRole."Approval Role";
+      ApprovalEntry.VALIDATE("Sender ID",PurchaseHeader.Originator);
+      ApprovalEntry.VALIDATE("Approver ID",PurchaseHeader."Person Responsible");
+
+      ApprovalEntry."Date-Time Sent for Approval" := CURRENTDATETIME;
+      ApprovalEntry."Due Date" := TODAY;
+      CASE DocumentType_Local."Approval Value" OF
+        DocumentType_Local."Approval Value"::Net:ApprovalEntry.Amount := ApprovalsBuffer."Value Ex. VAT";
+        DocumentType_Local."Approval Value"::Gross:ApprovalEntry.Amount := ApprovalsBuffer."Value Inc. VAT";
+      END;
+      ApprovalEntry."Amount (LCY)" := ApprovalEntry.Amount;
+      ApprovalEntry."Value Net" := ApprovalsBuffer."Value Ex. VAT";
+      ApprovalEntry."Value Gross" := ApprovalsBuffer."Value Inc. VAT";
+      ApprovalEntry."Record ID to Approve" := PurchaseHeader.RECORDID;
+      ApprovalEntry.VALIDATE(Status,ApprovalEntry."Approval Status"::Approved);
+      ApprovalEntry.MODIFY;
+
+      {
+      MESSAGE('Hello from %1',Rec."No.");
+      {
+      //If this Purch Header has a Proc. Workflow (Document Type) then check for Type of Supply
+      IF Rec."TA Document Type" <> '' THEN BEGIN
+        IF ProcurementWorkflow.GET(Rec."TA Document Type") THEN BEGIN
+          IF ProcurementWorkflow."Type of Supply Filter" <> '' THEN BEGIN
+            Vendor.RESET;
+            Vendor.SETFILTER("Type of Supply Code",ProcurementWorkflow."Type of Supply Filter");
+            IF PAGE.RUNMODAL(0,Vendor) = ACTION::LookupOK THEN BEGIN
+              Rec.VALIDATE("Buy-from Vendor No.",Vendor."No.");
+            END;
+          END;
+        END;
+      END ELSE BEGIN
+
+      END;
+      }
+      }
+    END;
+
+    [Business(FALSE)]
+    PROCEDURE PurchaseHeaderTableBuyFromVendorNoOnLookup_Publisher@1000000043(VAR Rec@1000000000 : Record 38;VAR xRec@1000000001 : Record 38;CurrFieldNo@1000000002 : Integer);
+    BEGIN
+    END;
+
+    [EventSubscriber(Codeunit,81000,PurchaseHeaderTableBuyFromVendorNoOnLookup_Publisher)]
+    LOCAL PROCEDURE PurchaseHeaderTableBuyFromVendorNoOnLookup_Subscriber@1000000044(VAR Rec@1000000000 : Record 38;VAR xRec@1000000001 : Record 38;CurrFieldNo@1000000002 : Integer);
+    VAR
+      ProcurementWorkflow@1000000003 : Record 81001;
+      Vendor@1000000004 : Record 23;
+    BEGIN
+      //If this Purch Header has a Proc. Workflow (Document Type) then check for Type of Supply
+      IF Rec."Procurement Workflow" <> '' THEN BEGIN
+        IF ProcurementWorkflow.GET(Rec."Procurement Workflow") THEN BEGIN
+          IF ProcurementWorkflow."Type of Supply Filter" <> '' THEN BEGIN
+            Vendor.RESET;
+            Vendor.SETFILTER("Type of Supply Code",ProcurementWorkflow."Type of Supply Filter");
+            IF PAGE.RUNMODAL(81063,Vendor) = ACTION::LookupOK THEN BEGIN
+              Rec.VALIDATE("Buy-from Vendor No.",Vendor."No.");
+            END;
+          END ELSE BEGIN
+            Vendor.RESET;
+            IF PAGE.RUNMODAL(81063,Vendor) = ACTION::LookupOK THEN BEGIN
+              Rec.VALIDATE("Buy-from Vendor No.",Vendor."No.");
+            END;
+          END;
+        END;
+      END ELSE BEGIN
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

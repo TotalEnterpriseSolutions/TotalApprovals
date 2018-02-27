@@ -1,0 +1,51 @@
+OBJECT Page 81004 Web Approvals
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=11:30:08;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table9055;
+    PageType=CardPart;
+    OnOpenPage=BEGIN
+                 SETFILTER("User ID Filter",USERID);
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1000000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000000;1;Group  ;
+                CaptionML=[ENU=Approvals;
+                           CYM=Cymeradwyaethau;
+                           ENG=Approvals];
+                GroupType=CueGroup }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[ENU=Requests to Approve;
+                           ENG=Requests to Approve];
+                SourceExpr="Requests to Approve";
+                DrillDownPageID=TA Admin Approval Entries;
+                StyleExpr=TRUE }
+
+    { 1000000002;2;Field  ;
+                SourceExpr="Requests Sent for Approval";
+                Visible=false;
+                LookupPageID=TA Approval Requests;
+                DrillDownPageID=TA Approval Requests }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

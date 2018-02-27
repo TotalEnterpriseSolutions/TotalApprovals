@@ -1,0 +1,356 @@
+OBJECT Page 139 Posted Purch. Invoice Subform
+{
+  OBJECT-PROPERTIES
+  {
+    Date=25/10/17;
+    Time=13:17:30;
+    Modified=Yes;
+    Version List=NAVW110.00,TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=[ENU=Lines;
+               ENG=Lines];
+    LinksAllowed=No;
+    SourceTable=Table123;
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+    OnAfterGetCurrRecord=BEGIN
+                           DocumentTotals.CalculatePostedPurchInvoiceTotals(TotalPurchInvHeader,VATAmount,Rec);
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 1900000004;0 ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 1907935204;1 ;ActionGroup;
+                      CaptionML=[ENU=&Line;
+                                 ENG=&Line];
+                      Image=Line }
+      { 1901314304;2 ;Action    ;
+                      Name=Dimensions;
+                      AccessByPermission=TableData 348=R;
+                      ShortCutKey=Shift+Ctrl+D;
+                      CaptionML=[ENU=Dimensions;
+                                 ENG=Dimensions];
+                      ToolTipML=[ENU=View or edit dimensions, such as area, project, or department, that you can assign to sales and purchase documents to distribute costs and analyze transaction history.;
+                                 ENG=View or edit dimensions, such as area, project, or department, that you can assign to sales and purchase documents to distribute costs and analyse transaction history.];
+                      Image=Dimensions;
+                      OnAction=BEGIN
+                                 ShowDimensions;
+                               END;
+                                }
+      { 1904945204;2 ;Action    ;
+                      Name=Comments;
+                      CaptionML=[ENU=Co&mments;
+                                 ENG=Co&mments];
+                      Image=ViewComments;
+                      OnAction=BEGIN
+                                 ShowLineComments;
+                               END;
+                                }
+      { 1905987604;2 ;Action    ;
+                      Name=ItemTrackingEntries;
+                      CaptionML=[ENU=Item &Tracking Entries;
+                                 ENG=Item &Tracking Entries];
+                      Image=ItemTrackingLedger;
+                      OnAction=BEGIN
+                                 ShowItemTrackingLines;
+                               END;
+                                }
+      { 1907075804;2 ;Action    ;
+                      Name=ItemReceiptLines;
+                      AccessByPermission=TableData 120=R;
+                      CaptionML=[ENU=Item Receipt &Lines;
+                                 ENG=Item Receipt &Lines];
+                      OnAction=BEGIN
+                                 IF NOT (Type IN [Type::Item,Type::"Charge (Item)"]) THEN
+                                   TESTFIELD(Type);
+                                 ShowItemReceiptLines;
+                               END;
+                                }
+      { 13      ;2   ;Action    ;
+                      Name=DeferralSchedule;
+                      CaptionML=[ENU=Deferral Schedule;
+                                 ENG=Deferral Schedule];
+                      ToolTipML=[ENU=View the deferral schedule that governs how expenses paid with this purchase document were deferred to different accounting periods when the document was posted.;
+                                 ENG=View the deferral schedule that governs how expenses paid with this purchase document were deferred to different accounting periods when the document was posted.];
+                      ApplicationArea=#Suite;
+                      Image=PaymentPeriod;
+                      OnAction=BEGIN
+                                 ShowDeferrals;
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1   ;1   ;Group     ;
+                GroupType=Repeater }
+
+    { 2   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the line type.;
+                           ENG=Specifies the line type.];
+                SourceExpr=Type }
+
+    { 4   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies an item number that identifies the account number that identifies the general ledger account used when posting the line.;
+                           ENG=Specifies an item number that identifies the account number that identifies the general ledger account used when posting the line.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="No." }
+
+    { 62  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the cross-referenced item number. If you enter a cross reference between yours and your vendor's or customer's item number, then this number will override the standard item number when you enter the cross-reference number on a sales or purchase document.;
+                           ENG=Specifies the cross-referenced item number. If you enter a cross reference between yours and your vendor's or customer's item number, then this number will override the standard item number when you enter the cross-reference number on a sales or purchase document.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Cross-Reference No.";
+                Visible=FALSE }
+
+    { 14  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the code of the IC partner that the line has been distributed to.;
+                           ENG=Specifies the code of the IC partner that the line has been distributed to.];
+                SourceExpr="IC Partner Code";
+                Visible=FALSE }
+
+    { 32  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the variant code for the item.;
+                           ENG=Specifies the variant code for the item.];
+                SourceExpr="Variant Code";
+                Visible=FALSE }
+
+    { 6   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies either the name of, or a description of, the item or general ledger account.;
+                           ENG=Specifies either the name of, or a description of, the item or general ledger account.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr=Description }
+
+    { 38  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies a code that explains why the item is returned.;
+                           ENG=Specifies a code that explains why the item is returned.];
+                SourceExpr="Return Reason Code";
+                Visible=FALSE }
+
+    { 8   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the quantity posted from the line.;
+                           ENG=Specifies the quantity posted from the line.];
+                ApplicationArea=#Basic,#Suite;
+                BlankZero=Yes;
+                SourceExpr=Quantity }
+
+    { 30  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the unit of measure code for the item.;
+                           ENG=Specifies the unit of measure code for the item.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Unit of Measure Code" }
+
+    { 10  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the unit of measure for the item (bottle or piece, for example).;
+                           ENG=Specifies the unit of measure for the item (bottle or piece, for example).];
+                SourceExpr="Unit of Measure";
+                Visible=FALSE }
+
+    { 12  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the direct unit cost of one unit of the item.;
+                           ENG=Specifies the direct unit cost of one unit of the item.];
+                ApplicationArea=#Basic,#Suite;
+                BlankZero=Yes;
+                SourceExpr="Direct Unit Cost" }
+
+    { 54  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the item's indirect cost, as a percentage.;
+                           ENG=Specifies the item's indirect cost, as a percentage.];
+                SourceExpr="Indirect Cost %";
+                Visible=FALSE }
+
+    { 50  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the cost, in LCY, of one unit of the item on the line.;
+                           ENG=Specifies the cost, in LCY, of one unit of the item on the line.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Unit Cost (LCY)";
+                Visible=FALSE }
+
+    { 52  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the price, in LCY, for one unit of the item.;
+                           ENG=Specifies the price, in LCY, for one unit of the item.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Unit Price (LCY)" }
+
+    { 1000000000;2;Field  ;
+                SourceExpr="VAT Prod. Posting Group" }
+
+    { 64  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the net amount (before subtracting the invoice discount amount) that must be paid for the items on the line.;
+                           ENG=Specifies the net amount (before subtracting the invoice discount amount) that must be paid for the items on the line.];
+                ApplicationArea=#Basic,#Suite;
+                BlankZero=Yes;
+                SourceExpr="Line Amount" }
+
+    { 16  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the line discount % granted on items on each individual line.;
+                           ENG=Specifies the line discount % granted on items on each individual line.];
+                ApplicationArea=#Basic,#Suite;
+                BlankZero=Yes;
+                SourceExpr="Line Discount %" }
+
+    { 44  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the discount amount that was granted on the invoice line.;
+                           ENG=Specifies the discount amount that was granted on the invoice line.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Line Discount Amount";
+                Visible=FALSE }
+
+    { 42  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies whether the invoice line could have been included in an invoice discount calculation.;
+                           ENG=Specifies whether the invoice line could have been included in an invoice discount calculation.];
+                SourceExpr="Allow Invoice Disc.";
+                Visible=FALSE }
+
+    { 34  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the number of the job that the purchase invoice line is linked to.;
+                           ENG=Specifies the number of the job that the purchase invoice line is linked to.];
+                SourceExpr="Job No." }
+
+    { 20  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the insurance number on the purchase invoice line.;
+                           ENG=Specifies the insurance number on the purchase invoice line.];
+                SourceExpr="Insurance No.";
+                Visible=FALSE }
+
+    { 28  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the budgeted FA number on the purchase invoice line.;
+                           ENG=Specifies the budgeted FA number on the purchase invoice line.];
+                SourceExpr="Budgeted FA No.";
+                Visible=FALSE }
+
+    { 18  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the FA posting type of the purchase invoice line.;
+                           ENG=Specifies the FA posting type of the purchase invoice line.];
+                SourceExpr="FA Posting Type";
+                Visible=FALSE }
+
+    { 22  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies whether depreciation was calculated until the FA posting date of the line.;
+                           ENG=Specifies whether depreciation was calculated until the FA posting date of the line.];
+                SourceExpr="Depr. until FA Posting Date";
+                Visible=FALSE }
+
+    { 26  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the depreciation book code on the purchase invoice line.;
+                           ENG=Specifies the depreciation book code on the purchase invoice line.];
+                SourceExpr="Depreciation Book Code";
+                Visible=FALSE }
+
+    { 24  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies whether, when this line was posted, the additional acquisition cost posted on the line was depreciated in proportion to the amount by which the fixed asset had already been depreciated.;
+                           ENG=Specifies whether, when this line was posted, the additional acquisition cost posted on the line was depreciated in proportion to the amount by which the fixed asset had already been depreciated.];
+                SourceExpr="Depr. Acquisition Cost";
+                Visible=FALSE }
+
+    { 36  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the number of a particular item entry to which the invoice line was applied when it was posted.;
+                           ENG=Specifies the number of a particular item entry to which the invoice line was applied when it was posted.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Appl.-to Item Entry";
+                Visible=FALSE }
+
+    { 11  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the deferral template that governs how expenses paid with this purchase document are deferred to the different accounting periods when the expenses were incurred.;
+                           ENG=Specifies the deferral template that governs how expenses paid with this purchase document are deferred to the different accounting periods when the expenses were incurred.];
+                ApplicationArea=#Suite;
+                SourceExpr="Deferral Code" }
+
+    { 60  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the code for Shortcut Dimension 1.;
+                           ENG=Specifies the code for Shortcut Dimension 1.];
+                ApplicationArea=#Suite;
+                SourceExpr="Shortcut Dimension 1 Code";
+                Visible=FALSE }
+
+    { 58  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the code for Shortcut Dimension 2.;
+                           ENG=Specifies the code for Shortcut Dimension 2.];
+                ApplicationArea=#Suite;
+                SourceExpr="Shortcut Dimension 2 Code";
+                Visible=FALSE }
+
+    { 31  ;1   ;Group     ;
+                GroupType=Group }
+
+    { 25  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 23  ;3   ;Field     ;
+                Name=Invoice Discount Amount;
+                CaptionML=[ENU=Invoice Discount Amount;
+                           ENG=Invoice Discount Amount];
+                ToolTipML=[ENU=Specifies a discount amount that is deducted from the value in the Total Incl. VAT field. You can enter or change the amount manually.;
+                           ENG=Specifies a discount amount that is deducted from the value in the Total Incl. VAT field. You can enter or change the amount manually.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr=TotalPurchInvHeader."Invoice Discount Amount";
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                CaptionClass=DocumentTotals.GetInvoiceDiscAmountWithVATCaption(TotalPurchInvHeader."Prices Including VAT");
+                Editable=FALSE }
+
+    { 7   ;2   ;Group     ;
+                GroupType=Group }
+
+    { 9   ;3   ;Field     ;
+                Name=Total Amount Excl. VAT;
+                DrillDown=No;
+                CaptionML=[ENU=Total Amount Excl. VAT;
+                           ENG=Total Amount Excl. VAT];
+                ToolTipML=[ENU=Specifies the sum of the value in the Line Amount Excl. VAT field on all lines in the document minus any discount amount in the Invoice Discount Amount field.;
+                           ENG=Specifies the sum of the value in the Line Amount Excl. VAT field on all lines in the document minus any discount amount in the Invoice Discount Amount field.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr=TotalPurchInvHeader.Amount;
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                CaptionClass=DocumentTotals.GetTotalExclVATCaption(TotalPurchInvHeader."Currency Code");
+                Editable=FALSE }
+
+    { 3   ;3   ;Field     ;
+                Name=Total VAT Amount;
+                CaptionML=[ENU=Total VAT;
+                           ENG=Total VAT];
+                ToolTipML=[ENU=Specifies the sum of VAT amounts on all lines in the document.;
+                           ENG=Specifies the sum of VAT amounts on all lines in the document.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr=VATAmount;
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                CaptionClass=DocumentTotals.GetTotalVATCaption(TotalPurchInvHeader."Currency Code");
+                Editable=FALSE }
+
+    { 5   ;3   ;Field     ;
+                Name=Total Amount Incl. VAT;
+                CaptionML=[ENU=Total Amount Incl. VAT;
+                           ENG=Total Amount Incl. VAT];
+                ToolTipML=[ENU=Specifies the sum of the value in the Line Amount Incl. VAT field on all lines in the document minus any discount amount in the Invoice Discount Amount field.;
+                           ENG=Specifies the sum of the value in the Line Amount Incl. VAT field on all lines in the document minus any discount amount in the Invoice Discount Amount field.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr=TotalPurchInvHeader."Amount Including VAT";
+                AutoFormatType=1;
+                AutoFormatExpr=TotalPurchInvHeader."Currency Code";
+                CaptionClass=DocumentTotals.GetTotalInclVATCaption(TotalPurchInvHeader."Currency Code");
+                Editable=FALSE;
+                Style=Strong;
+                StyleExpr=TRUE }
+
+  }
+  CODE
+  {
+    VAR
+      TotalPurchInvHeader@1002 : Record 122;
+      DocumentTotals@1001 : Codeunit 57;
+      VATAmount@1000 : Decimal;
+
+    BEGIN
+    END.
+  }
+}
+

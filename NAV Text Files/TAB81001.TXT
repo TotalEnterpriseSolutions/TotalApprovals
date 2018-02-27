@@ -1,0 +1,141 @@
+OBJECT Table 81001 Procurement Workflow
+{
+  OBJECT-PROPERTIES
+  {
+    Date=11/10/17;
+    Time=16:30:08;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+  }
+  FIELDS
+  {
+    { 1   ;   ;Procurement Workflow;Code20         }
+    { 2   ;   ;Description         ;Text30         }
+    { 3   ;   ;No. Series          ;Code20        ;TableRelation="No. Series" }
+    { 4   ;   ;Maps to NAV Type    ;Option        ;OptionString=Purchase Order,Purchase Invoice,Purchase Credit,Sales Order,Sales Credit,Data Capture,Expenses,Credit Card,Transfer }
+    { 5   ;   ;Approval Dimension 1;Code20        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("General Ledger Setup"."Global Dimension 1 Code");
+                                                   TableRelation=Dimension.Code;
+                                                   Editable=No }
+    { 6   ;   ;Approval Dimension 2;Code20        ;FieldClass=FlowField;
+                                                   CalcFormula=Lookup("General Ledger Setup"."Global Dimension 2 Code");
+                                                   TableRelation=Dimension.Code;
+                                                   Editable=No }
+    { 7   ;   ;Approval Dimension 3;Code20        ;TableRelation=Dimension.Code }
+    { 8   ;   ;Approval Dimension 4;Code20        ;TableRelation=Dimension.Code }
+    { 9   ;   ;Approval Dimension 5;Code20        ;TableRelation=Dimension.Code }
+    { 10  ;   ;Usage               ;Text250        }
+    { 11  ;   ;Show Dimension 1    ;Boolean        }
+    { 12  ;   ;Show Dimension 2    ;Boolean        }
+    { 13  ;   ;Show Dimension 3    ;Boolean        }
+    { 14  ;   ;Show Dimension 4    ;Boolean        }
+    { 15  ;   ;Show Dimension 5    ;Boolean        }
+    { 16  ;   ;Dimension Setup     ;Integer       ;FieldClass=FlowField;
+                                                   CalcFormula=Count("Total Approval Dimensions" WHERE (Catalogue=FIELD(Procurement Workflow))) }
+    { 21  ;   ;Budget Approval Type;Option        ;OnValidate=BEGIN
+                                                                CASE "Budget Approval Type" OF
+                                                                  1..2: "Group by Dimension 1" := TRUE;
+                                                                END;
+                                                              END;
+
+                                                   OptionString=None,By Document,By Line,Manual,By Person Responsible }
+    { 22  ;   ;System Area Type    ;Option        ;OptionString=Procurement,Expenses,OnlineForms,GPC,Approvals,Sales,Timesheets }
+    { 23  ;   ;Approval Value      ;Option        ;OptionString=Gross,Net }
+    { 24  ;   ;Person Resp. can't App. Proc.;Boolean }
+    { 25  ;   ;Raised By can't App. Proc.;Boolean  }
+    { 26  ;   ;Person Resp. can't App. Inv.;Boolean }
+    { 27  ;   ;Raised By can't App. Inv.;Boolean   }
+    { 28  ;   ;Group by Dimension 1;Boolean        }
+    { 29  ;   ;Group by Dimension 2;Boolean        }
+    { 30  ;   ;Group by Dimension 3;Boolean        }
+    { 31  ;   ;Group by Dimension 4;Boolean        }
+    { 32  ;   ;Group by Dimension 5;Boolean        }
+    { 33  ;   ;Approval Mode       ;Option        ;OptionString=All,Equal and Senior Only,Senior Only }
+    { 34  ;   ;Approval Sequence   ;Option        ;OptionString=Commercial and Budget at the Same Time,Budget then Commercial,Commercial then Budget,Budget Only }
+    { 35  ;   ;Report URL          ;Text250        }
+    { 36  ;   ;Approval Tolerance Mode;Option     ;OptionString=By Document,By Line }
+    { 37  ;   ;Value Tolerance     ;Decimal        }
+    { 38  ;   ;Percent Variance Tolerance;Decimal  }
+    { 39  ;   ;Invoice Approval    ;Option        ;OptionString=By Person Responsible,By Workflow,None }
+    { 40  ;   ;Invoice Post on Approval;Boolean    }
+    { 41  ;   ;Tolerance Method    ;Option        ;OptionString=Value,Percentage }
+    { 42  ;   ;Vendor No.          ;Code20        ;TableRelation=Vendor.No. }
+    { 43  ;   ;Invoice Approval Doc. Type;Code20  ;TableRelation="Procurement Workflow" WHERE (Maps to NAV Type=CONST(Purchase Invoice)) }
+    { 47  ;   ;Report ID           ;Integer        }
+    { 50  ;   ;Can Forward         ;Boolean       ;InitValue=No }
+    { 60  ;   ;Due Date Required   ;Boolean        }
+    { 65  ;   ;Allow Deferrals     ;Boolean        }
+    { 70  ;   ;Auto-authorise Below;Decimal        }
+    { 80  ;   ;Raised By can't Receive;Boolean     }
+    { 200 ;   ;Procurement Method  ;Option        ;OptionString=[Catalogue,Vendor,Template ] }
+    { 300 ;   ;Type of Supply Filter;Code10       ;TableRelation="Type of Supply" }
+    { 400 ;   ;Location Specific Vendor;Boolean    }
+    { 500 ;   ;Attachment Required ;Boolean        }
+    { 1000;   ;Budget Name         ;Code20        ;TableRelation="G/L Budget Name" }
+    { 1001;   ;Budget From Date    ;Date           }
+    { 1002;   ;Budget To Date      ;Date           }
+    { 1003;   ;Budget Dimension 1  ;Code20        ;TableRelation=Dimension;
+                                                   OnValidate=BEGIN
+                                                                CheckIsAnalysisViewDim("Budget Dimension 1");
+                                                              END;
+                                                               }
+    { 1004;   ;Budget Dimension 2  ;Code20        ;TableRelation=Dimension;
+                                                   OnValidate=BEGIN
+                                                                CheckIsAnalysisViewDim("Budget Dimension 2");
+                                                              END;
+                                                               }
+    { 1005;   ;Budget Dimension 3  ;Code20        ;TableRelation=Dimension;
+                                                   OnValidate=BEGIN
+                                                                CheckIsAnalysisViewDim("Budget Dimension 3");
+                                                              END;
+                                                               }
+    { 1006;   ;Budget Dimension 4  ;Code20        ;TableRelation=Dimension;
+                                                   OnValidate=BEGIN
+                                                                CheckIsAnalysisViewDim("Budget Dimension 4");
+                                                              END;
+                                                               }
+    { 1007;   ;Budget Analysis View;Code20        ;TableRelation="Analysis View";
+                                                   OnValidate=BEGIN
+                                                                IF "Budget Analysis View" <> xRec."Budget Analysis View" THEN BEGIN
+                                                                  "Budget Dimension 1" := '';
+                                                                  "Budget Dimension 2" := '';
+                                                                  "Budget Dimension 3" := '';
+                                                                  "Budget Dimension 4" := '';
+                                                                END;
+                                                              END;
+                                                               }
+  }
+  KEYS
+  {
+    {    ;Procurement Workflow                    ;Clustered=Yes }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    LOCAL PROCEDURE CheckIsAnalysisViewDim@1000000000(DimensionCode@1000000000 : Code[20]);
+    VAR
+      CannotBeFound@1000000001 : TextConst 'ENU=Analysis View %1 cannot be found';
+      AnalysisView@1000000002 : Record 363;
+      MissingDimension@1000000003 : TextConst 'ENU=Dimension %1 must be included in the Analysis View %2';
+    BEGIN
+      TESTFIELD("Budget Analysis View");
+      IF NOT AnalysisView.GET("Budget Analysis View") THEN ERROR(STRSUBSTNO(CannotBeFound,Rec."Budget Analysis View"));
+      IF DimensionCode = AnalysisView."Dimension 1 Code" THEN EXIT;
+      IF DimensionCode = AnalysisView."Dimension 2 Code" THEN EXIT;
+      IF DimensionCode = AnalysisView."Dimension 3 Code" THEN EXIT;
+      IF DimensionCode = AnalysisView."Dimension 4 Code" THEN EXIT;
+
+      ERROR(STRSUBSTNO(MissingDimension,DimensionCode,"Budget Analysis View"));
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

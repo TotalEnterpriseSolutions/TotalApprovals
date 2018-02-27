@@ -1,0 +1,121 @@
+OBJECT Page 81002 Web Activities
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=12:06:59;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Description=Procurement Activities;
+    SourceTable=Table9055;
+    PageType=CardPart;
+    RefreshOnActivate=Yes;
+    OnOpenPage=BEGIN
+                 SETFILTER("User ID Filter",USERID);
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000005;1;Group  ;
+                Name=Purchase Orders;
+                CaptionML=[ENU=Documents;
+                           ENG=Documents];
+                GroupType=CueGroup;
+                ActionList=ACTIONS
+                {
+                  { 1000000001;  ;Action    ;
+                                  Name=Approved;
+                                  CaptionML=[CYM=Cymeradwy;
+                                             ENG=Approved];
+                                  Visible=FALSE;
+                                  OnAction=BEGIN
+                                             MESSAGE('Approved')
+                                           END;
+                                            }
+                }
+                 }
+
+    { 1000000002;2;Field  ;
+                CaptionML=[ENU=Open;
+                           CYM=Agor;
+                           ENG=Open];
+                SourceExpr=Open;
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[ENU=Pending Approval;
+                           CYM=Cymeradwyaethau yn yr Arfaeth;
+                           ENG=Pending Approval];
+                SourceExpr="Pending Approval";
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000004;2;Field  ;
+                SourceExpr="Pending Receipt";
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000006;2;Field  ;
+                CaptionML=[ENU=My Approved POs;
+                           CYM=My Approved POs;
+                           ENG=My Approved POs];
+                SourceExpr=Approved;
+                Visible=false;
+                Image=Stack;
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000010;1;Group  ;
+                Name=Actions;
+                CaptionML=[ENU=History;
+                           CYM=Hanes;
+                           ENG=History];
+                GroupType=CueGroup;
+                ActionList=ACTIONS
+                {
+                  { 1000000008;  ;Action    ;
+                                  Name=Approved Orders;
+                                  CaptionML=[ENU=My Approved POs;
+                                             CYM=My Approved POs;
+                                             ENG=My Approved POs];
+                                  OnAction=VAR
+                                             DocumentFunctions@1000000000 : Codeunit 81001;
+                                             PurchaseHeader@1000000001 : Record 38;
+                                           BEGIN
+                                             PurchaseHeader.RESET;
+                                             FILTERGROUP(0);
+                                             PurchaseHeader.SETRANGE("Document Type",PurchaseHeader."Document Type"::Order);
+                                             PurchaseHeader.SETRANGE(Status,PurchaseHeader.Status::Released);
+                                             PurchaseHeader.SETRANGE("Person Responsible",USERID);
+                                             PurchaseHeader.SETRANGE(Deleted,FALSE);
+                                             FILTERGROUP(2);
+                                             PAGE.RUN(PAGE::"TA Purchase Order List",PurchaseHeader);
+                                           END;
+                                            }
+                }
+                 }
+
+  }
+  CODE
+  {
+    VAR
+      GrecPI@1000000001 : Record 38;
+      GintOpen@1000000000 : Integer;
+      GintSubmitted@1000000002 : Integer;
+      GintIncomplete@1000000003 : Integer;
+      GintApproved@1000000004 : Integer;
+      GtxtApproved@1000000005 : Text;
+
+    BEGIN
+    END.
+  }
+}
+

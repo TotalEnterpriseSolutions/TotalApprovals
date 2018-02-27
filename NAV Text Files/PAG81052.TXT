@@ -1,0 +1,51 @@
+OBJECT Page 81052 Template Approval Workflow
+{
+  OBJECT-PROPERTIES
+  {
+    Date=31/08/17;
+    Time=14:15:32;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table81016;
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000008;2;Field  ;
+                SourceExpr=Dimension }
+
+    { 1000000002;2;Field  ;
+                SourceExpr="Approval Role" }
+
+    { 1000000003;2;Field  ;
+                SourceExpr=Sequence }
+
+    { 1000000004;2;Field  ;
+                SourceExpr="Approve All Sequence Members" }
+
+    { 1000000006;2;Field  ;
+                SourceExpr="Approval Mandatory" }
+
+    { 1000000007;2;Field  ;
+                SourceExpr="Due Date" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

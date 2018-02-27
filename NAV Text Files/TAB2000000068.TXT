@@ -1,0 +1,96 @@
+OBJECT Table 2000000068 Record Link
+{
+  OBJECT-PROPERTIES
+  {
+    Date=31/08/17;
+    Time=15:49:55;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    DataPerCompany=No;
+    OnInsert=BEGIN
+               // TA1.0
+               "User ID" := USERID;
+               Created := CURRENTDATETIME();
+               Company := COMPANYNAME;
+               // TA1.0
+             END;
+
+    CaptionML=[ENU=Record Link;
+               ENG=Record Link];
+  }
+  FIELDS
+  {
+    { 1   ;   ;Link ID             ;Integer       ;AutoIncrement=Yes;
+                                                   CaptionML=[ENU=Link ID;
+                                                              ENG=Link ID] }
+    { 2   ;   ;Record ID           ;RecordID      ;CaptionML=[ENU=Record ID;
+                                                              ENG=Record ID] }
+    { 3   ;   ;URL1                ;Text250       ;CaptionML=[ENU=URL1;
+                                                              ENG=URL1] }
+    { 4   ;   ;URL2                ;Text250       ;CaptionML=[ENU=URL2;
+                                                              ENG=URL2] }
+    { 5   ;   ;URL3                ;Text250       ;CaptionML=[ENU=URL3;
+                                                              ENG=URL3] }
+    { 6   ;   ;URL4                ;Text250       ;CaptionML=[ENU=URL4;
+                                                              ENG=URL4] }
+    { 7   ;   ;Description         ;Text250       ;CaptionML=[ENU=Description;
+                                                              ENG=Description] }
+    { 8   ;   ;Type                ;Option        ;CaptionML=[ENU=Type;
+                                                              ENG=Type];
+                                                   OptionCaptionML=[ENU=Link,Note,Attachment;
+                                                                    ENG=Link,Note,Attachment];
+                                                   OptionString=Link,Note,Attachment }
+    { 9   ;   ;Note                ;BLOB          ;CaptionML=[ENU=Note;
+                                                              ENG=Note];
+                                                   SubType=Memo }
+    { 10  ;   ;Created             ;DateTime      ;CaptionML=[ENU=Created;
+                                                              ENG=Created] }
+    { 11  ;   ;User ID             ;Text132       ;CaptionML=[ENU=User ID;
+                                                              ENG=User ID] }
+    { 12  ;   ;Company             ;Text30        ;TableRelation=Company.Name;
+                                                   CaptionML=[ENU=Company;
+                                                              ENG=Company] }
+    { 13  ;   ;Notify              ;Boolean       ;CaptionML=[ENU=Notify;
+                                                              ENG=Notify] }
+    { 14  ;   ;To User ID          ;Text132       ;CaptionML=[ENU=To User ID;
+                                                              ENG=To User ID] }
+  }
+  KEYS
+  {
+    {    ;Link ID                                 ;Clustered=Yes }
+    {    ;Record ID                                }
+    {    ;Company                                  }
+  }
+  FIELDGROUPS
+  {
+  }
+  CODE
+  {
+
+    LOCAL PROCEDURE "--- TES TA1.0 START ---"@1000000001();
+    BEGIN
+    END;
+
+    PROCEDURE ViewAttachment@1000000000();
+    VAR
+      FileManagement@1000000000 : Codeunit 419;
+    BEGIN
+      IF CURRENTCLIENTTYPE = CLIENTTYPE::Windows THEN
+        HYPERLINK(URL1)
+      ELSE BEGIN
+        DOWNLOAD(URL1,'Download','C:\',FileManagement.GetExtension(URL1),Description);
+      END;
+    END;
+
+    LOCAL PROCEDURE "--- TES TA1.0 END ---"@1000000002();
+    BEGIN
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

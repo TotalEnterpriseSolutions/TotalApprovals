@@ -1,0 +1,600 @@
+OBJECT Codeunit 81001 Document Functions
+{
+  OBJECT-PROPERTIES
+  {
+    Date=25/10/17;
+    Time=13:58:03;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    OnRun=VAR
+            Lcod1@1000000000 : Code[20];
+            Lcod2@1000000001 : Code[20];
+          BEGIN
+            MESSAGE(FORMAT(EditDimensionSet(185,'TEST',0,'',Lcod1,Lcod2)));
+          END;
+
+  }
+  CODE
+  {
+
+    PROCEDURE CreateDocument@1000000001(DocType@1000000000 : 'Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order') : Boolean;
+    VAR
+      PurchaseHeader@1000000008 : Record 38;
+      RoleDocumentType@1000000006 : Record 81017;
+      TotalApprovalUserRole@1000000005 : Record 81013;
+      DocumentType@1000000003 : Record 81001;
+      TotalApprovalSetup@1000000001 : Record 81000;
+      UserSetup@1000000010 : Record 91;
+      NoSeriesManagement@1000000007 : Codeunit 396;
+      DocumentTypeList@1000000002 : Page 81031;
+      TAPurchaseOrder@1000000009 : Page 81014;
+      LtxtConst001@1000000011 : TextConst 'ENU=User %1 does not exist in user setup;ENG=User %1 does not exist in user setup';
+      LtxtConst002@1000000012 : TextConst 'ENU=No Page set for doc type %1;ENG=No Page set for doc type %1';
+      UserDocumentTypes@1000000013 : Record 81023;
+      NoUserDocumentTypes@1000000014 : TextConst 'ENU=You have not had any Document Types defined';
+      DocumentTypeTemp@1000000004 : TEMPORARY Record 81001;
+      UserDocumentTypesLoop@1000000015 : Record 81023;
+      User@1000000016 : Record 2000000120;
+    BEGIN
+      TotalApprovalSetup.FINDFIRST;
+      TotalApprovalSetup.TESTFIELD("Unaproved no. Series");
+
+      IF TotalApprovalSetup."Admin Mode" THEN BEGIN
+        User.RESET;
+        CASE CURRENTCLIENTTYPE OF
+          CLIENTTYPE::Windows: IF PAGE.RUNMODAL(9843,User) = ACTION::LookupCancel THEN EXIT;
+          ELSE IF PAGE.RUNMODAL(9843,User) = ACTION::LookupCancel THEN EXIT(FALSE);
+        END;
+      END;
+
+      IF TotalApprovalSetup."Admin Mode" THEN UserSetup.GET(User."User Name") ELSE
+        IF NOT UserSetup.GET(USERID)THEN ERROR(STRSUBSTNO(LtxtConst001,USERID));
+
+      UserDocumentTypes.RESET;
+      UserDocumentTypes.SETRANGE(User,UserSetup."User ID");
+      CASE DocType OF
+        DocType::Invoice:UserDocumentTypes.SETRANGE("Maps to NAV Type",UserDocumentTypes."Maps to NAV Type"::"Purchase Invoice");
+        DocType::Order:UserDocumentTypes.SETRANGE("Maps to NAV Type",UserDocumentTypes."Maps to NAV Type"::"Purchase Order");
+      END;
+      IF NOT UserDocumentTypes.FINDFIRST THEN ERROR(NoUserDocumentTypes);
+
+      IF UserDocumentTypes.COUNT = 1 THEN BEGIN
+        DocumentType.GET(UserDocumentTypes."Document Type");
+      END ELSE BEGIN
+        DocumentTypeTemp.DELETEALL;
+        UserDocumentTypesLoop.RESET;
+        UserDocumentTypesLoop.SETRANGE(User,UserSetup."User ID");
+        CASE DocType OF
+          DocType::Invoice:UserDocumentTypesLoop.SETRANGE("Maps to NAV Type",UserDocumentTypesLoop."Maps to NAV Type"::"Purchase Invoice");
+          DocType::Order:UserDocumentTypesLoop.SETRANGE("Maps to NAV Type",UserDocumentTypesLoop."Maps to NAV Type"::"Purchase Order");
+        END;
+        IF UserDocumentTypesLoop.FINDFIRST THEN REPEAT
+          IF DocumentType.GET(UserDocumentTypesLoop."Document Type") THEN BEGIN
+            DocumentTypeTemp.INIT;
+              DocumentTypeTemp := DocumentType;
+            DocumentTypeTemp.INSERT;
+          END;
+        UNTIL UserDocumentTypesLoop.NEXT = 0;
+
+        CASE CURRENTCLIENTTYPE OF
+          CLIENTTYPE::Windows: IF PAGE.RUNMODAL(PAGE::"Procurement Workflow List",DocumentTypeTemp) = ACTION::LookupCancel THEN EXIT;
+          ELSE IF PAGE.RUNMODAL(PAGE::"Procurement Workflow List WEB",DocumentTypeTemp) = ACTION::LookupCancel THEN EXIT(FALSE);
+        END;
+        DocumentType.GET(DocumentTypeTemp."Procurement Workflow");
+      END;
+
+      IF ((DocType = DocType::Order) AND (DocumentType."Maps to NAV Type" = DocumentType."Maps to NAV Type"::"Purchase Invoice"))
+        THEN DocType := DocType::Invoice;
+
+      IF ((DocType = DocType::Order) AND (DocumentType."Maps to NAV Type" = DocumentType."Maps to NAV Type"::"Purchase Credit"))
+        THEN DocType := DocType::"Credit Memo";
+
+      PurchaseHeader.INIT;
+      PurchaseHeader.VALIDATE("Document Type",DocType);
+      PurchaseHeader.VALIDATE("Unapproved No.",NoSeriesManagement.GetNextNo(TotalApprovalSetup."Unaproved no. Series",WORKDATE,TRUE));
+
+      //
+      IF DocumentType."No. Series" <> '' THEN BEGIN
+        PurchaseHeader.VALIDATE("No. Series",DocumentType."No. Series");
+        PurchaseHeader.VALIDATE("No.",NoSeriesManagement.GetNextNo(DocumentType."No. Series",TODAY,TRUE));
+        IF DocType = DocType::Invoice THEN BEGIN
+          PurchaseHeader.VALIDATE("Vendor Invoice No.",PurchaseHeader."No.");
+          PurchaseHeader."Posting No. Series" := DocumentType."No. Series";
+          PurchaseHeader."Posting No." := PurchaseHeader."No.";
+        END;
+        IF DocType = DocType::"Credit Memo" THEN BEGIN
+          PurchaseHeader.VALIDATE("Vendor Cr. Memo No.",PurchaseHeader."No.");
+          PurchaseHeader."Posting No. Series" := DocumentType."No. Series";
+          PurchaseHeader."Posting No." := PurchaseHeader."No.";
+        END;
+      END ELSE
+        PurchaseHeader.VALIDATE("No.",'');
+
+      //
+
+      PurchaseHeader.INSERT(TRUE);
+
+      PurchaseHeader.VALIDATE("Procurement Workflow",DocumentType."Procurement Workflow");
+      PurchaseHeader.VALIDATE(Originator,UserSetup."User ID");
+      PurchaseHeader.VALIDATE("Person Responsible",UserSetup."User ID");
+      PurchaseHeader.VALIDATE("Assigned User ID",UserSetup."User ID");
+      PurchaseHeader."Posting Description" := '';
+      PurchaseHeader."Type of Supply Code" := DocumentType."Type of Supply Filter";
+      PurchaseHeader.MODIFY;
+
+      CASE DocType OF
+        DocType::Order: PAGE.RUN(PAGE::"TA Purchase Order",PurchaseHeader);
+        DocType::Invoice: PAGE.RUN(PAGE::"Purchase Invoice",PurchaseHeader); // TES DJA - FIX ME
+        DocType::"Credit Memo": PAGE.RUN(PAGE::"Purchase Credit Memo",PurchaseHeader); // TES DJA - FIX ME
+
+        ELSE ERROR(STRSUBSTNO(LtxtConst002,FORMAT(DocType)));
+      END;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE SetDefaults@1000000000(VAR PurchaseHeader@1000000000 : Record 38);
+    VAR
+      DocumentType@1000000003 : Record 81001;
+      UserSetup@1000000001 : Record 91;
+      DimensionValueCode@1000000002 : Code[20];
+      DimensionSetEntry@1000000004 : TEMPORARY Record 480;
+      DimensionManagement@1000000005 : Codeunit 408;
+    BEGIN
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+      UserSetup.GET(PurchaseHeader.Originator);
+
+      //Default Location
+      IF UserSetup."Default Location" <> '' THEN PurchaseHeader.VALIDATE("Location Code",UserSetup."Default Location");
+      //Default Dim Vals
+      DocumentType.CALCFIELDS("Approval Dimension 1","Approval Dimension 2");
+      IF (DocumentType."Show Dimension 1") AND (GetDefaultDims(USERID,DocumentType."Approval Dimension 1",DimensionValueCode)) THEN PurchaseHeader.VALIDATE("Shortcut Dimension 1 Code",DimensionValueCode);
+      IF (DocumentType."Show Dimension 1") AND (GetDefaultDims(USERID,DocumentType."Approval Dimension 2",DimensionValueCode)) THEN PurchaseHeader.VALIDATE("Shortcut Dimension 2 Code",DimensionValueCode);
+
+      //Add Document Dimensions
+      CheckDims(0,PurchaseHeader."Procurement Workflow",DimensionSetEntry);
+      PurchaseHeader."Dimension Set ID" := DimensionManagement.GetDimensionSetID(DimensionSetEntry);
+    END;
+
+    PROCEDURE EditDimensionSet@128(DimSetID@1000 : Integer;NewCaption@1003 : Text[250];Table_ID@1000000007 : Integer;DocNo@1000000006 : Code[20];VAR GlobalDimVal1@1000000005 : Code[20];VAR GlobalDimVal2@1000000004 : Code[20]) : Integer;
+    VAR
+      EditDimSetEntries@1002 : Page 480;
+      TAEditDimSetEntries@1000000003 : Page 81034;
+      NewDimSetID@1004 : Integer;
+      DimensionSetEntryTemp@1000000000 : TEMPORARY Record 480;
+      DimensionSetEntry@1000000001 : Record 480;
+      DimensionManagement@1000000002 : Codeunit 408;
+    BEGIN
+      NewDimSetID := DimSetID;
+      LoadTempDimSet(NewDimSetID,DimensionSetEntryTemp);
+
+      //Add Additional Dims
+      CheckDims(Table_ID,DocNo,DimensionSetEntryTemp);
+      PAGE.RUNMODAL(PAGE::"TA Edit Dim Set Entries",DimensionSetEntryTemp);
+      NewDimSetID := DimensionManagement.GetDimensionSetID(DimensionSetEntryTemp);
+
+      EXIT(NewDimSetID);
+    END;
+
+    PROCEDURE LoadTempDimSet@1000000014(DimSetID@1000000002 : Integer;VAR DimensionSetEntryTemp@1000000000 : TEMPORARY Record 480);
+    VAR
+      DimensionSetEntry@1000000001 : Record 480;
+      GeneralLedgerSetup@1000000003 : Record 98;
+    BEGIN
+      GeneralLedgerSetup.FINDFIRST;
+      DimensionSetEntry.RESET;
+      DimensionSetEntry.SETRANGE("Dimension Set ID",DimSetID);
+      //Load Temp Rec
+      IF DimensionSetEntry.FINDFIRST THEN REPEAT
+        DimensionSetEntryTemp.INIT;
+        DimensionSetEntryTemp := DimensionSetEntry;
+        IF DimensionSetEntryTemp.INSERT THEN;
+      UNTIL DimensionSetEntry.NEXT = 0;
+    END;
+
+    PROCEDURE CheckDims@1000000008(Table_ID@1000000002 : Integer;DocNo@1000000001 : Code[20];VAR DimensionSetEntryTemp@1000000000 : TEMPORARY Record 480) ActionRequired : Integer;
+    VAR
+      TotalApprovalDimensions@1000000003 : Record 81018;
+      GeneralLedgerSetup@1000000004 : Record 98;
+    BEGIN
+      CLEAR(ActionRequired);
+      TotalApprovalDimensions.RESET;
+      TotalApprovalDimensions.SETRANGE(Catalogue,DocNo);
+      IF Table_ID > 0 THEN TotalApprovalDimensions.SETRANGE(Index,Table_ID);
+      IF TotalApprovalDimensions.FINDFIRST THEN REPEAT
+        IF NOT DimensionSetEntryTemp.GET(DimensionSetEntryTemp."Dimension Set ID",TotalApprovalDimensions."Dimension Code") THEN BEGIN
+          AddDimension(TotalApprovalDimensions."Dimension Code",TotalApprovalDimensions."Dimension Value Code",DimensionSetEntryTemp);
+          CASE TotalApprovalDimensions."Value Posting" OF
+            TotalApprovalDimensions."Value Posting"::" ": ActionRequired+=1;
+            TotalApprovalDimensions."Value Posting"::"Code Mandatory": ActionRequired+=1;
+            TotalApprovalDimensions."Value Posting"::"Same Code":
+              BEGIN
+                AddDimension(TotalApprovalDimensions."Dimension Code",TotalApprovalDimensions."Dimension Value Code",DimensionSetEntryTemp);
+              END;
+          END;
+        END;
+      UNTIL TotalApprovalDimensions.NEXT =0;
+      EXIT(ActionRequired);
+    END;
+
+    LOCAL PROCEDURE AddDimension@1000000002(DimensionCode@1000000001 : Code[20];DimensionValueCode@1000000002 : Code[20];VAR DimensionSetEntryTemp@1000000000 : TEMPORARY Record 480);
+    BEGIN
+      DimensionSetEntryTemp.INIT;
+      DimensionSetEntryTemp."Dimension Set ID" := DimensionSetEntryTemp."Dimension Set ID";
+      DimensionSetEntryTemp.VALIDATE("Dimension Code",DimensionCode);
+      IF DimensionValueCode <> '' THEN DimensionSetEntryTemp.VALIDATE("Dimension Value Code",DimensionValueCode);
+      IF DimensionSetEntryTemp.INSERT THEN;
+    END;
+
+    PROCEDURE ClosePurchaseOrder@1000000040(VAR PurchaseHeader@1000000000 : Record 38) : Boolean;
+    VAR
+      PurchaseLine@1000000001 : Record 39;
+      Diffs@1000000002 : Boolean;
+      LtxtConst001@1000000003 : TextConst 'ENU="Received differences exist!\Do you want to match the Quantity with the QTY received to complete this order (This action is final and cannot be reversed)? ";ENG="Received differences exist!\Do you want to match the Quantity with the QTY received to complete this order (This action is final and cannot be reversed)? "';
+      LtxtConst002@1000000004 : TextConst 'ENU=Do you want to mark this order as complete?;ENG=Do you want to mark this order as complete?';
+      LtxtConst003@1000000006 : TextConst 'ENU=Status Must be ''Released'' to Mark the Order as Complete;ENG=Status Must be ''Released'' to Mark the Order as Complete';
+      ReleasePurchaseDocument@1000000005 : Codeunit 415;
+      Released@1000000007 : Boolean;
+      Qty@1000000008 : Decimal;
+      LtxtConstBlank@1000000009 : TextConst 'ENU=" "';
+    BEGIN
+      PurchaseLine.RESET;
+      PurchaseLine.SETRANGE("Document Type",PurchaseHeader."Document Type");
+      PurchaseLine.SETRANGE("Document No.",PurchaseHeader."No.");
+      PurchaseLine.SETFILTER(Type,'<>%1',PurchaseLine.Type::" ");
+      PurchaseLine.SETFILTER("No.",'<>%1',LtxtConstBlank);
+      PurchaseLine.SETFILTER("Outstanding Quantity",'>0');
+      IF PurchaseLine.FINDSET(FALSE)THEN BEGIN
+        //warn if differences
+        IF NOT CONFIRM(LtxtConst001)THEN EXIT(FALSE);
+        Diffs := TRUE;
+
+        //LcduReleasePurchDoc.PerformManualReopen(RrecPOHeader);
+        IF PurchaseHeader.Status = PurchaseHeader.Status::Released THEN BEGIN
+          Released := TRUE;
+          PurchaseHeader.Status := PurchaseHeader.Status::Open;
+          PurchaseHeader.MODIFY;
+        END;
+
+        CLEAR(Qty);
+        IF PurchaseLine.FINDSET(FALSE)THEN REPEAT
+          //Copy Values to Orig QTY
+          IF PurchaseLine.Quantity <> 0 THEN PurchaseLine."Original Order Qty." := PurchaseLine.Quantity;
+          //Change values on line
+          PurchaseLine.VALIDATE(Quantity,PurchaseLine."Quantity Received");
+          //Conditionally flag line as completely received
+          IF PurchaseLine.Quantity = 0 THEN PurchaseLine."Completely Received" := TRUE;
+          PurchaseLine.MODIFY;
+          Qty += PurchaseLine.Quantity;
+        UNTIL PurchaseLine.NEXT = 0;
+      END;
+
+      IF NOT Diffs THEN IF NOT CONFIRM(LtxtConst002)THEN EXIT(FALSE);
+      //Stamp header
+      PurchaseHeader.VALIDATE(Complete,TRUE);
+      PurchaseHeader.VALIDATE("Completed By",USERID);
+      IF (Released) AND (Qty > 0) THEN ReleasePurchaseDocument.PerformManualRelease(PurchaseHeader);
+      PurchaseHeader.MODIFY;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE DeleteOrder@1000000003(VAR PurchaseHeader@1000000000 : Record 38);
+    VAR
+      LtxtConst001@1000000001 : TextConst 'ENU=Document deleted %1 by %2';
+      PortalApprovalFunctions@1000000002 : Codeunit 81000;
+    BEGIN
+      PurchaseHeader."Error Text" := STRSUBSTNO(LtxtConst001,FORMAT(TODAY),USERID);
+      PortalApprovalFunctions.CancelALE(PurchaseHeader."Document Type",PurchaseHeader."No.");
+    END;
+
+    PROCEDURE ShowPostedInvoice@1000000046(VAR PurchaseHeader@1000000000 : Record 38);
+    VAR
+      PurchInvHeaderTemp@1000000001 : TEMPORARY Record 122;
+      PurchRcptHeader@1000000004 : Record 120;
+      PurchInvHeader@1000000003 : Record 122;
+      PurchInvLine@1000000005 : Record 123;
+      PostedPurchaseInvoices@1000000002 : Page 146;
+    BEGIN
+      PurchRcptHeader.RESET;
+      PurchRcptHeader.SETRANGE("Order No.",PurchaseHeader."No.");
+      IF PurchRcptHeader.FINDFIRST THEN REPEAT
+        PurchInvLine.RESET;
+        PurchInvLine.SETRANGE("Receipt No.",PurchRcptHeader."No.");
+        IF PurchInvLine.FINDFIRST THEN REPEAT
+          IF PurchInvHeader.GET(PurchInvLine."Document No.") THEN BEGIN
+            PurchInvHeaderTemp.INIT;
+            PurchInvHeaderTemp := PurchInvHeader;
+            IF PurchInvHeaderTemp.INSERT THEN;
+          END;
+        UNTIL PurchInvLine.NEXT = 0
+      UNTIL PurchRcptHeader.NEXT = 0;
+
+      PurchInvHeader.RESET;
+      PurchInvHeader.SETRANGE("Order No.",PurchaseHeader."No.");
+      IF PurchInvHeader.FINDFIRST THEN REPEAT
+        PurchInvHeaderTemp.INIT;
+        PurchInvHeaderTemp := PurchInvHeader;
+        IF PurchInvHeaderTemp.INSERT THEN;
+      UNTIL PurchInvHeader.NEXT = 0;
+
+      PAGE.RUN(PAGE::"TA Posted Purch List",PurchInvHeaderTemp);
+    END;
+
+    PROCEDURE StripDomain@1000000017(UserCode@1000000000 : Code[50]) : Code[50];
+    BEGIN
+      IF (STRPOS(UserCode,'\') =0) OR (STRLEN(FORMAT(UserCode)) = 0) THEN EXIT(UserCode);
+      EXIT(COPYSTR(FORMAT(UserCode),STRPOS(UserCode,'\')+1,STRLEN(UserCode)-STRPOS(UserCode,'\')))
+    END;
+
+    PROCEDURE GetDefaultDims@1000000012(UserCode@1000000001 : Code[50];DimensionCode@1000000002 : Code[20];VAR DimensionValueCode@1000000003 : Code[20]) : Boolean;
+    VAR
+      UserDimensionCoding@1000000000 : Record 81015;
+    BEGIN
+      CLEAR(DimensionValueCode);
+      UserDimensionCoding.RESET;
+      UserDimensionCoding.SETRANGE("Portal User",UserCode);
+      UserDimensionCoding.SETRANGE("Dimension Code",DimensionCode);
+      UserDimensionCoding.SETRANGE("Default Dimension",TRUE);
+      IF UserDimensionCoding.FINDFIRST THEN DimensionValueCode := UserDimensionCoding."Dimension Value Code" ELSE EXIT(FALSE);
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE CopyApprovalTemplate@1000000006(DocNo@1000000003 : Code[20]) : Boolean;
+    VAR
+      DocumentType@1000000000 : Record 81001;
+      TotalApprovalWorkflow@1000000001 : Record 81009;
+      TotalApprovalWorkflowMod@1000000004 : Record 81009;
+      CopyDocNo@1000000002 : Code[20];
+      LtxtConst001@1000000005 : TextConst 'ENG=Do you want to select a document type to copy Budget Approval Workflow from?';
+      LtxtConst002@1000000006 : TextConst 'ENG=Document type %1 selected with %2 Budget Approval Workflow lines to copy.\ Do you want to apply these lines to document %3?';
+    BEGIN
+      DocumentType.RESET;
+      CLEAR(CopyDocNo);
+
+      IF NOT CONFIRM(LtxtConst001)THEN EXIT(FALSE);
+      IF PAGE.RUNMODAL(PAGE::"Procurement Workflow List",DocumentType) = ACTION::LookupOK THEN CopyDocNo := DocumentType."Procurement Workflow";
+
+      TotalApprovalWorkflow.RESET;
+      TotalApprovalWorkflow.SETRANGE(Code,CopyDocNo);
+      IF NOT CONFIRM(STRSUBSTNO(LtxtConst002,CopyDocNo,FORMAT(TotalApprovalWorkflow.COUNT),DocNo))THEN EXIT(FALSE);
+
+      TotalApprovalWorkflowMod.RESET;
+      TotalApprovalWorkflowMod.SETRANGE(Code,DocNo);
+      IF TotalApprovalWorkflowMod.FINDSET(FALSE)THEN TotalApprovalWorkflowMod.DELETEALL;
+
+      TotalApprovalWorkflowMod.RESET;
+      IF TotalApprovalWorkflow.FINDSET(FALSE) THEN REPEAT
+        TotalApprovalWorkflowMod.INIT;
+        TotalApprovalWorkflowMod := TotalApprovalWorkflow;
+        TotalApprovalWorkflowMod.Code := DocNo;
+        IF TotalApprovalWorkflowMod.INSERT THEN;
+      UNTIL TotalApprovalWorkflow.NEXT = 0 ELSE EXIT(FALSE);
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE CopyFromGLDimtoCatDim@1000000004(CatalogueCode@1000000000 : Code[20];CatalogueLineIndex@1000000001 : Integer;LineType@1000000002 : Option;AccountNo@1000000003 : Code[20]);
+    VAR
+      CatalogueLine@1000000004 : Record 81003;
+      Local_LineType@1000000005 : Option;
+      Local_AccountNo@1000000006 : Code[20];
+      DefaultDimension@1000000007 : Record 352;
+      TotalApprovalDimensions@1000000008 : Record 81018;
+      GLAccount@1000000009 : Record 15;
+    BEGIN
+      CatalogueLine.RESET;
+      IF CatalogueCode <> '' THEN CatalogueLine.SETRANGE("Catalogue Code",CatalogueCode);
+      IF CatalogueLineIndex <> 0 THEN CatalogueLine.SETRANGE(Index,CatalogueLineIndex);
+      IF CatalogueLine.FINDSET THEN REPEAT
+        //GET Underlying GL Account
+        IF AccountNo <> '' THEN BEGIN
+           Local_LineType := LineType;
+           Local_AccountNo := AccountNo;
+        END ELSE BEGIN
+           Local_LineType := CatalogueLine.Type;
+           Local_AccountNo := CatalogueLine."No.";
+        END;
+
+        IF NOT GLAccount.GET(AccountNo) THEN EXIT;
+
+        Local_AccountNo := Local_AccountNo;
+        //Get Dimensions From Underlying G/L Account
+        DefaultDimension.RESET;
+        DefaultDimension.SETRANGE("Table ID" , 15);
+        DefaultDimension.SETRANGE("No.",Local_AccountNo);
+        IF DefaultDimension.FINDSET THEN REPEAT
+          //Add GL Dimensions to Catalogue Dimensions
+          TotalApprovalDimensions.INIT;
+          TotalApprovalDimensions.VALIDATE(Catalogue,CatalogueLine."Catalogue Code");
+          TotalApprovalDimensions.VALIDATE(Index,CatalogueLine.Index);
+          TotalApprovalDimensions.VALIDATE("Dimension Code",DefaultDimension."Dimension Code");
+          TotalApprovalDimensions.VALIDATE("Dimension Value Code",DefaultDimension."Dimension Value Code");
+          TotalApprovalDimensions.VALIDATE("Value Posting",DefaultDimension."Value Posting");
+          IF TotalApprovalDimensions.INSERT THEN;
+        UNTIL DefaultDimension.NEXT = 0;
+      UNTIL CatalogueLine.NEXT = 0;
+    END;
+
+    PROCEDURE PrintDocument@1000000005(VAR PurchaseHeader@1000000000 : Record 38);
+    VAR
+      DocumentType@1000000001 : Record 81001;
+      Local_PurchaseHeader@1000000002 : Record 38;
+    BEGIN
+      DocumentType.GET(PurchaseHeader."Procurement Workflow");
+      DocumentType.TESTFIELD("Report ID");
+
+      Local_PurchaseHeader.RESET;
+      Local_PurchaseHeader.SETRANGE("Document Type",PurchaseHeader."Document Type");
+      Local_PurchaseHeader.SETRANGE("No.",PurchaseHeader."No.");
+      IF CURRENTCLIENTTYPE = CLIENTTYPE::Web THEN
+        REPORT.RUN(DocumentType."Report ID",FALSE,FALSE,Local_PurchaseHeader)
+      ELSE
+        REPORT.RUN(DocumentType."Report ID",TRUE,TRUE,Local_PurchaseHeader);
+    END;
+
+    PROCEDURE BuildDimensionFilter@1000000035(DimensionCode@1000000002 : Code[20]) : Code[250];
+    VAR
+      UserDimensionCoding@1000000000 : Record 81015;
+      DimensionFilter@1000000001 : Text;
+    BEGIN
+      CLEAR(DimensionFilter);
+      UserDimensionCoding.SETRANGE("Portal User",USERID);
+      UserDimensionCoding.SETRANGE("Dimension Code",DimensionCode);
+      IF UserDimensionCoding.FINDFIRST THEN REPEAT
+        IF DimensionFilter = '' THEN DimensionFilter := STRSUBSTNO('%1',UserDimensionCoding."Dimension Value Code") ELSE DimensionFilter := DimensionFilter + STRSUBSTNO('|%1',UserDimensionCoding."Dimension Value Code");
+      UNTIL UserDimensionCoding.NEXT = 0;
+      IF DimensionFilter = '' THEN DimensionFilter := 'xxxx';
+
+      EXIT(DimensionFilter);
+    END;
+
+    PROCEDURE GetBudgetAmount@1000000021(DocType@1000000000 : Code[20];DimSet@1000000001 : Integer;GLAcc@1000000002 : Code[20];ShowList@1000000005 : Boolean) : Decimal;
+    VAR
+      DocumentType@1000000003 : Record 81001;
+      AnalysisViewBudgetEntry@1000000004 : Record 366;
+    BEGIN
+      IF (DimSet = 0) OR (GLAcc = '') THEN EXIT(0);
+
+      GetGLAccountRange(GLAcc);
+      DocumentType.GET(DocType);
+      IF DocumentType."Budget Name" = '' THEN EXIT(0);
+
+      AnalysisViewBudgetEntry.RESET;
+      AnalysisViewBudgetEntry.SETFILTER("Budget Name",DocumentType."Budget Name");
+      AnalysisViewBudgetEntry.SETFILTER("G/L Account No.",GLAcc);
+      AnalysisViewBudgetEntry.SETRANGE("Posting Date",DocumentType."Budget From Date",DocumentType."Budget To Date");
+      AnalysisViewBudgetEntry.SETFILTER("Analysis View Code",DocumentType."Budget Analysis View");
+      IF (DocumentType."Budget Dimension 1" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 1",DimSet) <> '') THEN
+        SetAVBudgetDimFilter(AnalysisViewBudgetEntry,DocumentType."Budget Analysis View" ,DocumentType."Budget Dimension 1",GetDimValueFromDimSet(DocumentType."Budget Dimension 1",DimSet));
+      IF (DocumentType."Budget Dimension 2" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 2",DimSet) <> '') THEN
+        SetAVBudgetDimFilter(AnalysisViewBudgetEntry,DocumentType."Budget Analysis View" ,DocumentType."Budget Dimension 2" ,GetDimValueFromDimSet(DocumentType."Budget Dimension 2",DimSet));
+      IF (DocumentType."Budget Dimension 3" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 3",DimSet) <> '') THEN
+        SetAVBudgetDimFilter(AnalysisViewBudgetEntry,DocumentType."Budget Analysis View" ,DocumentType."Budget Dimension 3",GetDimValueFromDimSet(DocumentType."Budget Dimension 3",DimSet));
+      IF (DocumentType."Budget Dimension 4" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 4",DimSet) <> '') THEN
+        SetAVBudgetDimFilter(AnalysisViewBudgetEntry,DocumentType."Budget Analysis View" ,DocumentType."Budget Dimension 4",GetDimValueFromDimSet(DocumentType."Budget Dimension 4",DimSet));
+      AnalysisViewBudgetEntry.CALCSUMS(Amount);
+      IF ShowList THEN PAGE.RUNMODAL(559,AnalysisViewBudgetEntry);
+      EXIT(AnalysisViewBudgetEntry.Amount);
+    END;
+
+    PROCEDURE GetActualAmount@1000000022(DocType@1000000002 : Code[20];DimSet@1000000001 : Integer;GLAcc@1000000000 : Code[20];ShowList@1000000005 : Boolean) : Decimal;
+    VAR
+      DocumentType@1000000004 : Record 81001;
+      AnalysisViewEntry@1000000003 : Record 365;
+    BEGIN
+      IF (DimSet = 0) OR (GLAcc = '') THEN EXIT(0);
+
+      GetGLAccountRange(GLAcc);
+      DocumentType.GET(DocType);
+
+      IF DocumentType."Budget Name" = '' THEN EXIT(0);
+
+      AnalysisViewEntry.RESET;
+      AnalysisViewEntry.SETFILTER("Account No.",GLAcc);
+      AnalysisViewEntry.SETRANGE("Posting Date",DocumentType."Budget From Date",DocumentType."Budget To Date");
+      AnalysisViewEntry.SETFILTER("Analysis View Code",DocumentType."Budget Analysis View");
+      IF (DocumentType."Budget Dimension 1" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 1",DimSet) <> '') THEN
+        SetAVGLDimFilter(AnalysisViewEntry,DocumentType."Budget Analysis View",DocumentType."Budget Dimension 1",GetDimValueFromDimSet(DocumentType."Budget Dimension 1",DimSet));
+      IF (DocumentType."Budget Dimension 2" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 2", DimSet) <> '') THEN
+        SetAVGLDimFilter(AnalysisViewEntry,DocumentType."Budget Analysis View",DocumentType."Budget Dimension 2",GetDimValueFromDimSet(DocumentType."Budget Dimension 2",DimSet));
+      IF (DocumentType."Budget Dimension 3" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 3",DimSet) <> '') THEN
+        SetAVGLDimFilter(AnalysisViewEntry,DocumentType."Budget Analysis View",DocumentType."Budget Dimension 3",GetDimValueFromDimSet(DocumentType."Budget Dimension 3",DimSet));
+      IF (DocumentType."Budget Dimension 4" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 4",DimSet) <> '') THEN
+        SetAVGLDimFilter(AnalysisViewEntry,DocumentType."Budget Analysis View",DocumentType."Budget Dimension 4",GetDimValueFromDimSet(DocumentType."Budget Dimension 4",DimSet));
+      AnalysisViewEntry.CALCSUMS(Amount);
+      IF ShowList THEN PAGE.RUNMODAL(558,AnalysisViewEntry);
+      EXIT(AnalysisViewEntry.Amount);
+    END;
+
+    PROCEDURE GetCommitmentAmount@1000000023(DocType@1000000002 : Code[20];DimSet@1000000001 : Integer;GLAcc@1000000000 : Code[20];ShowList@1000000005 : Boolean) : Decimal;
+    VAR
+      PurchaseLine@1000000003 : Record 39;
+      DocumentType@1000000004 : Record 81001;
+    BEGIN
+      IF (GLAcc = '') THEN EXIT(0);
+
+      GetGLAccountRange(GLAcc);
+      DocumentType.GET(DocType);
+      IF DocumentType."Budget Name" = '' THEN EXIT(0);
+
+      PurchaseLine.RESET;
+      PurchaseLine.SETFILTER("Commitment Account",GLAcc);
+      PurchaseLine.SETRANGE("Expected Receipt Date",DocumentType."Budget From Date",DocumentType."Budget To Date");
+      IF (DocumentType."Budget Dimension 1" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 1",DimSet) <> '') THEN
+        SetCommitmentDimFilter(PurchaseLine,DocumentType."Budget Dimension 1",GetDimValueFromDimSet(DocumentType."Budget Dimension 1",DimSet));
+      IF (DocumentType."Budget Dimension 2" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 2",DimSet) <> '') THEN
+        SetCommitmentDimFilter(PurchaseLine,DocumentType."Budget Dimension 2",GetDimValueFromDimSet(DocumentType."Budget Dimension 2",DimSet));
+      IF (DocumentType."Budget Dimension 3" <> '') AND (GetDimValueFromDimSet(DocumentType."Budget Dimension 3",DimSet) <> '') THEN
+        SetCommitmentDimFilter(PurchaseLine,DocumentType."Budget Dimension 3",GetDimValueFromDimSet(DocumentType."Budget Dimension 3",DimSet));
+
+      PurchaseLine.CALCSUMS("Committed Amount (LCY)");
+
+      IF ShowList THEN PAGE.RUNMODAL(518,PurchaseLine);
+
+      EXIT(PurchaseLine."Committed Amount (LCY)");
+    END;
+
+    LOCAL PROCEDURE GetGLAccountRange@1000000038(VAR GLAcc@1000000000 : Code[250]);
+    VAR
+      GLAccount@1000000001 : Record 15;
+    BEGIN
+      IF NOT GLAccount.GET(GLAcc) THEN EXIT;
+      IF GLAccount.Totaling <> '' THEN GLAcc := GLAccount.Totaling;
+    END;
+
+    PROCEDURE GetDimValueFromDimSet@1000000011(DimensionCode@1000000000 : Code[20];DimSetID@1000000001 : Integer) : Code[20];
+    VAR
+      DimensionSetEntry@1000000002 : Record 480;
+    BEGIN
+      DimensionSetEntry.RESET;
+      DimensionSetEntry.SETRANGE("Dimension Set ID",DimSetID);
+      DimensionSetEntry.SETFILTER("Dimension Code",DimensionCode);
+      IF DimensionSetEntry.FINDFIRST THEN EXIT(DimensionSetEntry."Dimension Value Code")ELSE EXIT('');
+    END;
+
+    LOCAL PROCEDURE SetAVBudgetDimFilter@1000000024(VAR AnalysisViewBudgetEntry@1000000000 : Record 366;AnalysisViewCode@1000000001 : Code[20];DimensionCode@1000000002 : Code[20];DimensionValueCode@1000000003 : Code[20]);
+    VAR
+      AnalysisView@1000000004 : Record 363;
+    BEGIN
+      AnalysisView.GET(AnalysisViewCode);
+      IF DimensionCode = AnalysisView."Dimension 1 Code" THEN AnalysisViewBudgetEntry.SETFILTER("Dimension 1 Value Code",DimensionValueCode);
+      IF DimensionCode = AnalysisView."Dimension 2 Code" THEN AnalysisViewBudgetEntry.SETFILTER("Dimension 2 Value Code",DimensionValueCode);
+      IF DimensionCode = AnalysisView."Dimension 3 Code" THEN AnalysisViewBudgetEntry.SETFILTER("Dimension 3 Value Code",DimensionValueCode);
+      IF DimensionCode = AnalysisView."Dimension 4 Code" THEN AnalysisViewBudgetEntry.SETFILTER("Dimension 4 Value Code",DimensionValueCode);
+    END;
+
+    LOCAL PROCEDURE SetAVGLDimFilter@1000000010(VAR AnalysisViewEntry@1000000000 : Record 365;AnalysisViewCode@1000000001 : Code[20];DimensionCode@1000000002 : Code[20];DimensionValueCode@1000000003 : Code[20]);
+    VAR
+      AnalysisView@1000000004 : Record 363;
+    BEGIN
+      AnalysisView.GET(AnalysisViewCode);
+      IF DimensionCode = AnalysisView."Dimension 1 Code" THEN AnalysisViewEntry.SETFILTER("Dimension 1 Value Code",DimensionValueCode);
+      IF DimensionCode = AnalysisView."Dimension 2 Code" THEN AnalysisViewEntry.SETFILTER("Dimension 2 Value Code",DimensionValueCode);
+      IF DimensionCode = AnalysisView."Dimension 3 Code" THEN AnalysisViewEntry.SETFILTER("Dimension 3 Value Code",DimensionValueCode);
+      IF DimensionCode = AnalysisView."Dimension 4 Code" THEN AnalysisViewEntry.SETFILTER("Dimension 4 Value Code",DimensionValueCode);
+    END;
+
+    LOCAL PROCEDURE SetCommitmentDimFilter@1000000036(VAR PurchaseLine@1000000000 : Record 39;DimensionCode@1000000002 : Code[20];DimensionValueCode@1000000003 : Code[20]);
+    VAR
+      GeneralLedgerSetup@1000000004 : Record 98;
+    BEGIN
+      GeneralLedgerSetup.GET;
+
+      CASE DimensionCode OF
+        GeneralLedgerSetup."Shortcut Dimension 1 Code" : BEGIN
+          PurchaseLine.SETFILTER(PurchaseLine."Shortcut Dimension 1 Code",DimensionValueCode);
+          EXIT;
+        END;
+        GeneralLedgerSetup."Shortcut Dimension 2 Code" : BEGIN
+          PurchaseLine.SETFILTER(PurchaseLine."Shortcut Dimension 2 Code",DimensionValueCode);
+          EXIT;
+        END;
+      END;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

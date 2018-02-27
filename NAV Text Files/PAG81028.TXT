@@ -1,0 +1,232 @@
+OBJECT Page 81028 TA Vendor Card
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=16:34:09;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Vendor Card;
+               ENG=Vendor Card];
+    SourceTable=Table23;
+    PageType=Card;
+    RefreshOnActivate=Yes;
+    PromotedActionCategoriesML=[ENU=New,Process,Report,Approve,Request Approval;
+                                ENG=New,Process,Report,Approve,Request Approval];
+    OnInit=BEGIN
+             ContactEditable := TRUE;
+             MapPointVisible := TRUE;
+           END;
+
+    OnOpenPage=VAR
+                 MapMgt@1000 : Codeunit 802;
+                 LrecPortalSetup@1000000000 : Record 81000;
+               BEGIN
+                 ActivateFields;
+                 IF NOT MapMgt.TestSetup THEN
+                   MapPointVisible := FALSE;
+                 LrecPortalSetup.FINDFIRST;
+                 //GbooCurrency := LrecPortalSetup."New Vendor Currency Selection";
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       ActivateFields;
+                     END;
+
+    OnNewRecord=VAR
+                  LrecPortalSetup@1000000000 : Record 81000;
+                BEGIN
+                END;
+
+    OnInsertRecord=VAR
+                     LrecPortalSetup@1000000001 : Record 81000;
+                     LrecConfTemplateHeader@1000000004 : Record 8618;
+                     RecRef@1000000002 : RecordRef;
+                     LcduConfMgt@1000000003 : Codeunit 8612;
+                   BEGIN
+                     //TES+
+                     "Visible in Portal" := TRUE;
+                     GbooNew := TRUE;
+
+                     //TES-
+                   END;
+
+    OnQueryClosePage=VAR
+                       LtxtConst001@1000000001 : TextConst 'ENG=The following fields are mandatory : \\Name\Address\City\County\Postcode\Phone No.\Contact\Email Address\\Discard New Vendor ?';
+                     BEGIN
+                       //IF ("E-Mail" = '') AND GbooNew THEN ERROR(GtxtConst001);
+
+                       IF (("E-Mail" = '')
+                          OR (Name = '')
+                          OR (Address = '')
+                          OR (City = '')
+                          OR (County = '')
+                          OR ("Post Code" = '')
+                          OR ("Phone No." = '')
+                          OR (Contact = '')
+                          OR ("E-Mail" = '')
+                         ) AND GbooNew THEN
+                         //IF CONFIRM('E-Mail is a Mandatory Field. Discard New Vendor ?',FALSE) = FALSE THEN EXIT(FALSE)
+                         IF CONFIRM(LtxtConst001,FALSE) = FALSE THEN EXIT(FALSE)
+                         ELSE BEGIN
+                           //Rec.DELETE;
+                           MODIFY;
+                       END;
+                     END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           ActivateFields;
+                           //OpenApprovalEntriesExistCurrUser := ApprovalsMgmt.HasOpenApprovalEntriesForCurrentUser(RECORDID);
+                           //OpenApprovalEntriesExist := ApprovalsMgmt.HasOpenApprovalEntries(RECORDID);
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 1000000004;  ;ActionContainer;
+                      ActionContainerType=NewDocumentItems }
+      { 1000000003;1 ;Action    ;
+                      Name=[Attach ];
+                      CaptionML=[CYM=Atodi;
+                                 ENG=Attach];
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=Attach;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 MESSAGE('File Attachment');
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1   ;1   ;Group     ;
+                CaptionML=[ENU=General;
+                           ENG=General] }
+
+    { 2   ;2   ;Field     ;
+                SourceExpr="No.";
+                Importance=Promoted;
+                Editable=false;
+                OnAssistEdit=BEGIN
+                               IF AssistEdit(xRec) THEN
+                                 CurrPage.UPDATE;
+                             END;
+                              }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr=Name;
+                Importance=Promoted;
+                ShowMandatory=TRUE }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Address;
+                ShowMandatory=TRUE }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr="Address 2" }
+
+    { 1040000;2;Field     ;
+                SourceExpr=City;
+                ShowMandatory=TRUE }
+
+    { 1040002;2;Field     ;
+                SourceExpr=County;
+                ShowMandatory=TRUE }
+
+    { 81  ;2   ;Field     ;
+                SourceExpr="Country/Region Code";
+                Visible=false }
+
+    { 1000000002;2;Field  ;
+                SourceExpr="Currency Code";
+                Visible=GbooCurrency }
+
+    { 79  ;2   ;Field     ;
+                SourceExpr="Post Code";
+                Importance=Promoted;
+                ShowMandatory=TRUE }
+
+    { 1902768601;1;Group  ;
+                Name=Communication;
+                CaptionML=[ENU=Communication;
+                           CYM=Cyfathrebu;
+                           ENG=Communication];
+                GroupType=Group }
+
+    { 1000000001;2;Field  ;
+                SourceExpr=Contact;
+                ShowMandatory=TRUE }
+
+    { 44  ;2   ;Field     ;
+                Name=Phone No.2;
+                SourceExpr="Phone No.";
+                Importance=Promoted;
+                ShowMandatory=TRUE }
+
+    { 45  ;2   ;Field     ;
+                SourceExpr="Fax No." }
+
+    { 48  ;2   ;Field     ;
+                SourceExpr="E-Mail";
+                Importance=Promoted;
+                ShowMandatory=TRUE }
+
+    { 86  ;2   ;Field     ;
+                SourceExpr="Home Page" }
+
+    { 1905767507;1;Part   ;
+                CaptionML=[CYM=Nodiadau;
+                           ENG=Notes];
+                Visible=TRUE;
+                PartType=System;
+                SystemPartID=Notes }
+
+  }
+  CODE
+  {
+    VAR
+      CalendarMgmt@1000 : Codeunit 7600;
+      PaymentToleranceMgt@1002 : Codeunit 426;
+      CustomizedCalEntry@1001 : Record 7603;
+      CustomizedCalendar@1003 : Record 7602;
+      Text001@1005 : TextConst 'ENU=Do you want to allow payment tolerance for entries that are currently open?;ENG=Do you want to allow payment tolerance for entries that are currently open?';
+      Text002@1004 : TextConst 'ENU=Do you want to remove payment tolerance from entries that are currently open?;ENG=Do you want to remove payment tolerance from entries that are currently open?';
+      MapPointVisible@19022708 : Boolean INDATASET;
+      ContactEditable@19051436 : Boolean INDATASET;
+      SocialListeningSetupVisible@1007 : Boolean INDATASET;
+      SocialListeningVisible@1006 : Boolean INDATASET;
+      OpenApprovalEntriesExistCurrUser@1009 : Boolean;
+      OpenApprovalEntriesExist@1008 : Boolean;
+      ShowWorkflowStatus@1011 : Boolean;
+      GtxtConst001@1000000000 : TextConst 'ENG=E-mail is a mandatory field for new vendors';
+      GbooNew@1000000001 : Boolean;
+      GbooCurrency@1000000002 : Boolean INDATASET;
+
+    LOCAL PROCEDURE ActivateFields@3();
+    BEGIN
+      SetSocialListeningFactboxVisibility;
+      ContactEditable := "Primary Contact No." = '';
+    END;
+
+    LOCAL PROCEDURE ContactOnAfterValidate@19013243();
+    BEGIN
+      ActivateFields;
+    END;
+
+    LOCAL PROCEDURE SetSocialListeningFactboxVisibility@1();
+    BEGIN
+      //SocialListeningMgt.GetVendFactboxVisibility(Rec,SocialListeningSetupVisible,SocialListeningVisible);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

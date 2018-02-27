@@ -1,0 +1,106 @@
+OBJECT Page 81025 TA Attachments FactBox
+{
+  OBJECT-PROPERTIES
+  {
+    Date=13/07/17;
+    Time=16:09:48;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=[ENU=Portal Attachments Factbox;
+               CYM=Atodiadau yn y Porth;
+               ENG=Portal Attachments Factbox];
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    LinksAllowed=No;
+    SourceTable=Table2000000068;
+    SourceTableView=WHERE(Type=CONST(Attachment));
+    PageType=ListPart;
+    ShowFilter=No;
+    OnInit=BEGIN
+             SETRANGE("Record ID",GridRecID);
+           END;
+
+    OnOpenPage=BEGIN
+                 SETRANGE("Record ID",GridRecID);
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       SETRANGE("Record ID",GridRecID);
+                     END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           SETRANGE("Record ID",GridRecID);
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 1000000007;  ;ActionContainer;
+                      Name=Action;
+                      ActionContainerType=ActionItems }
+    }
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000006;2;Field  ;
+                CaptionML=[ENU=Description;
+                           CYM=Disgrifiad;
+                           ENG=Description];
+                SourceExpr=Description;
+                OnLookup=VAR
+                           LfilFile@1000000001 : File;
+                         BEGIN
+                           ViewAttachment;
+                         END;
+
+                OnDrillDown=BEGIN
+                              ViewAttachment;
+                            END;
+                             }
+
+    { 1000000002;2;Field  ;
+                CaptionML=[ENU=Created;
+                           CYM=Crewyd;
+                           ENG=Created];
+                SourceExpr=Created }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[ENU=User ID;
+                           CYM=ID Defnyddiwr;
+                           ENG=User ID];
+                SourceExpr="User ID" }
+
+  }
+  CODE
+  {
+    VAR
+      GridRecID@1000000001 : RecordID;
+
+    PROCEDURE SetRecordID@1000000001(VridRecordID@1000000000 : RecordID);
+    BEGIN
+      GridRecID := VridRecordID;
+      SETRANGE("Record ID",GridRecID);
+      SETRANGE(Company,COMPANYNAME);
+    END;
+
+    PROCEDURE UpdatePage@1000000000();
+    BEGIN
+      CurrPage.UPDATE(FALSE);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,860 @@
+OBJECT Page 81015 TA Purchase Order Subform
+{
+  OBJECT-PROPERTIES
+  {
+    Date=21/09/17;
+    Time=22:26:21;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Lines;
+               CYM=Llinellau;
+               ENG=Lines];
+    MultipleNewLines=Yes;
+    LinksAllowed=No;
+    SourceTable=Table39;
+    DelayedInsert=Yes;
+    SourceTableView=WHERE(Document Type=FILTER(Order));
+    PageType=ListPart;
+    AutoSplitKey=Yes;
+    OnOpenPage=VAR
+                 LrecPSetup@1000000000 : Record 81000;
+               BEGIN
+                 //P.Light01+
+                 IF LrecPSetup.FINDFIRST THEN GbooJobs := LrecPSetup."Allow Job Configuration";
+                 //P.Light01-
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       ShowShortcutDimCode(ShortcutDimCode);
+                       TypeChosen := Type <> Type::" ";
+
+                       //P.Light01+
+                       SetAdditionalDimValue(FALSE);
+                       //GbooIsiMileageLine := IsMileageLine;
+                       //P.Light01-
+                     END;
+
+    OnNewRecord=BEGIN
+                  InitType;
+                  CLEAR(ShortcutDimCode);
+                END;
+
+    OnDeleteRecord=VAR
+                     ReservePurchLine@1000 : Codeunit 99000834;
+                   BEGIN
+                     IF (Quantity <> 0) AND ItemExists("No.") THEN BEGIN
+                       COMMIT;
+                       IF NOT ReservePurchLine.DeleteLineConfirm(Rec) THEN
+                         EXIT(FALSE);
+                       ReservePurchLine.DeleteLine(Rec);
+                     END;
+                   END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           IF PurchHeader.GET("Document Type","Document No.") THEN;
+
+                           DocumentTotals.PurchaseUpdateTotalsControls(Rec,TotalPurchaseHeader,TotalPurchaseLine,RefreshMessageEnabled,
+                             TotalAmountStyle,RefreshMessageText,InvDiscAmountEditable,VATAmount);
+
+                           CLEAR(GbooDimVisible);
+                           CLEAR(GbooQTYRecInv);
+                           CASE PurchHeader.Status OF
+                             PurchHeader.Status::Open: GbooDimVisible := TRUE;
+                             PurchHeader.Status::Released: GbooQTYRecInv := TRUE;
+                           END;
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 1000000009;  ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 1000000007;1 ;Action    ;
+                      CaptionML=[ENU=Co&mments;
+                                 CYM=Sylwadau;
+                                 ENG=Co&mments];
+                      Image=ViewComments;
+                      OnAction=BEGIN
+                                 ShowLineComments;
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1   ;1   ;Group     ;
+                GroupType=Repeater }
+
+    { 1000000000;2;Field  ;
+                CaptionML=[CYM="Cod Catalog ";
+                           ENG=Catalogue Code];
+                SourceExpr="Catalogue Code" }
+
+    { 1000000001;2;Field  ;
+                CaptionML=[CYM=Llinell Catalog;
+                           ENG=Catalogue Line];
+                SourceExpr="Catalogue Line" }
+
+    { 62  ;2   ;Field     ;
+                SourceExpr="Cross-Reference No.";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             CrossReferenceNoOnAfterValidat;
+                             NoOnAfterValidate;
+                           END;
+
+                OnLookup=BEGIN
+                           CrossReferenceNoLookUp;
+                           InsertExtendedText(FALSE);
+                           NoOnAfterValidate;
+                         END;
+                          }
+
+    { 1108;2   ;Field     ;
+                SourceExpr="IC Partner Code";
+                Visible=FALSE }
+
+    { 104 ;2   ;Field     ;
+                SourceExpr="IC Partner Ref. Type";
+                Visible=FALSE }
+
+    { 106 ;2   ;Field     ;
+                SourceExpr="IC Partner Reference";
+                Visible=FALSE }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Variant Code";
+                Visible=FALSE }
+
+    { 82  ;2   ;Field     ;
+                SourceExpr=Nonstock;
+                Visible=FALSE }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr=Description;
+                Editable=FALSE }
+
+    { 1000000004;2;Field  ;
+                SourceExpr="Description 2" }
+
+    { 2   ;2   ;Field     ;
+                SourceExpr=Type;
+                Editable=False;
+                OnValidate=BEGIN
+                             NoOnAfterValidate;
+                             TypeChosen := Type <> Type::" ";
+
+                             IF xRec."No." <> '' THEN
+                               RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 4   ;2   ;Field     ;
+                SourceExpr="No.";
+                Editable=False;
+                OnValidate=BEGIN
+                             ShowShortcutDimCode(ShortcutDimCode);
+                             NoOnAfterValidate;
+
+                             IF xRec."No." <> '' THEN
+                               RedistributeTotalsOnAfterValidate;
+                           END;
+
+                ShowMandatory=TypeChosen }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[ENU=Missing Dimensions;
+                           CYM=Dimensiynau Coll;
+                           ENG=Missing Dimensions];
+                SourceExpr=GintAdditionalDims;
+                Importance=Promoted;
+                Enabled=GbooDimVisible;
+                Editable=false;
+                OnDrillDown=BEGIN
+                              SetAdditionalDimValue(TRUE);
+                            END;
+                             }
+
+    { 1000000010;2;Field  ;
+                CaptionML=CYM=Meysydd Gwybodaeth Ychwanegol;
+                SourceExpr="Additional Info Fields";
+                Visible=false }
+
+    { 80  ;2   ;Field     ;
+                SourceExpr="Drop Shipment";
+                Visible=FALSE }
+
+    { 88  ;2   ;Field     ;
+                SourceExpr="Return Reason Code";
+                Visible=FALSE }
+
+    { 74  ;2   ;Field     ;
+                SourceExpr="Location Code";
+                Visible=false }
+
+    { 102 ;2   ;Field     ;
+                SourceExpr="Bin Code";
+                Visible=FALSE }
+
+    { 8   ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr=Quantity;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+
+                ShowMandatory=TypeChosen }
+
+    { 10410090;2;Field    ;
+                CaptionML=[ENU=VAT Bus. Posting Group;
+                           CYM=Grwp Postio Busnes TAW;
+                           ENG=VAT Bus. Posting Group];
+                SourceExpr="VAT Bus. Posting Group";
+                Visible=FALSE }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="VAT Prod. Posting Group";
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 42  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Reserved Quantity";
+                Visible=false }
+
+    { 9   ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Job Remaining Qty.";
+                Visible=FALSE }
+
+    { 36  ;2   ;Field     ;
+                SourceExpr="Unit of Measure Code";
+                Visible=false;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Unit of Measure";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 12  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Direct Unit Cost";
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+
+                ShowMandatory=TypeChosen }
+
+    { 28  ;2   ;Field     ;
+                SourceExpr="Indirect Cost %";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 68  ;2   ;Field     ;
+                SourceExpr="Unit Cost (LCY)";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 30  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Unit Price (LCY)";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 44  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Line Amount";
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 16  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Line Discount %";
+                Visible=false;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 60  ;2   ;Field     ;
+                SourceExpr="Line Discount Amount";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 108 ;2   ;Field     ;
+                SourceExpr="Prepayment %";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 110 ;2   ;Field     ;
+                SourceExpr="Prepmt. Line Amount";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 112 ;2   ;Field     ;
+                SourceExpr="Prepmt. Amt. Inv.";
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             RedistributeTotalsOnAfterValidate;
+                           END;
+                            }
+
+    { 58  ;2   ;Field     ;
+                SourceExpr="Allow Invoice Disc.";
+                Visible=FALSE }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Inv. Discount Amount";
+                Visible=FALSE }
+
+    { 18  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Qty. to Receive";
+                Editable=GbooQTYRecInv }
+
+    { 20  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Quantity Received" }
+
+    { 22  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Qty. to Invoice" }
+
+    { 24  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Quantity Invoiced" }
+
+    { 114 ;2   ;Field     ;
+                SourceExpr="Prepmt Amt to Deduct";
+                Visible=FALSE }
+
+    { 116 ;2   ;Field     ;
+                SourceExpr="Prepmt Amt Deducted";
+                Visible=FALSE }
+
+    { 56  ;2   ;Field     ;
+                SourceExpr="Allow Item Charge Assignment";
+                Visible=FALSE }
+
+    { 66  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Qty. to Assign";
+                Visible=false;
+                OnDrillDown=BEGIN
+                              CurrPage.SAVERECORD;
+                              ShowItemChargeAssgnt;
+                              UpdateForm(FALSE);
+                            END;
+                             }
+
+    { 54  ;2   ;Field     ;
+                BlankZero=Yes;
+                SourceExpr="Qty. Assigned";
+                Visible=false;
+                OnDrillDown=BEGIN
+                              CurrPage.SAVERECORD;
+                              ShowItemChargeAssgnt;
+                              UpdateForm(FALSE);
+                            END;
+                             }
+
+    { 126 ;2   ;Field     ;
+                SourceExpr="Job No.";
+                Visible=GbooJobs }
+
+    { 128 ;2   ;Field     ;
+                SourceExpr="Job Task No.";
+                Visible=GbooJobs }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Job Planning Line No.";
+                Visible=FALSE }
+
+    { 130 ;2   ;Field     ;
+                SourceExpr="Job Line Type";
+                Visible=FALSE }
+
+    { 132 ;2   ;Field     ;
+                SourceExpr="Job Unit Price";
+                Visible=FALSE }
+
+    { 134 ;2   ;Field     ;
+                SourceExpr="Job Line Amount";
+                Visible=FALSE }
+
+    { 136 ;2   ;Field     ;
+                SourceExpr="Job Line Discount Amount";
+                Visible=FALSE }
+
+    { 138 ;2   ;Field     ;
+                SourceExpr="Job Line Discount %";
+                Visible=FALSE }
+
+    { 140 ;2   ;Field     ;
+                SourceExpr="Job Total Price";
+                Visible=FALSE }
+
+    { 142 ;2   ;Field     ;
+                SourceExpr="Job Unit Price (LCY)";
+                Visible=FALSE }
+
+    { 144 ;2   ;Field     ;
+                SourceExpr="Job Total Price (LCY)";
+                Visible=FALSE }
+
+    { 146 ;2   ;Field     ;
+                SourceExpr="Job Line Amount (LCY)";
+                Visible=FALSE }
+
+    { 148 ;2   ;Field     ;
+                SourceExpr="Job Line Disc. Amount (LCY)";
+                Visible=FALSE }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Requested Receipt Date";
+                Visible=FALSE }
+
+    { 90  ;2   ;Field     ;
+                SourceExpr="Promised Receipt Date";
+                Visible=FALSE }
+
+    { 92  ;2   ;Field     ;
+                SourceExpr="Planned Receipt Date";
+                Visible=false }
+
+    { 100 ;2   ;Field     ;
+                SourceExpr="Expected Receipt Date";
+                Visible=false }
+
+    { 94  ;2   ;Field     ;
+                SourceExpr="Order Date";
+                Visible=false }
+
+    { 96  ;2   ;Field     ;
+                SourceExpr="Lead Time Calculation";
+                Visible=FALSE }
+
+    { 84  ;2   ;Field     ;
+                SourceExpr="Planning Flexibility";
+                Visible=FALSE }
+
+    { 40  ;2   ;Field     ;
+                SourceExpr="Prod. Order No.";
+                Visible=FALSE }
+
+    { 86  ;2   ;Field     ;
+                SourceExpr="Prod. Order Line No.";
+                Visible=FALSE }
+
+    { 64  ;2   ;Field     ;
+                SourceExpr="Operation No.";
+                Visible=FALSE }
+
+    { 70  ;2   ;Field     ;
+                SourceExpr="Work Center No.";
+                Visible=FALSE }
+
+    { 72  ;2   ;Field     ;
+                SourceExpr=Finished;
+                Visible=FALSE }
+
+    { 38  ;2   ;Field     ;
+                SourceExpr="Whse. Outstanding Qty. (Base)";
+                Visible=FALSE }
+
+    { 98  ;2   ;Field     ;
+                SourceExpr="Inbound Whse. Handling Time";
+                Visible=FALSE }
+
+    { 46  ;2   ;Field     ;
+                SourceExpr="Blanket Order No.";
+                Visible=FALSE }
+
+    { 48  ;2   ;Field     ;
+                SourceExpr="Blanket Order Line No.";
+                Visible=FALSE }
+
+    { 52  ;2   ;Field     ;
+                SourceExpr="Appl.-to Item Entry";
+                Visible=FALSE }
+
+    { 78  ;2   ;Field     ;
+                SourceExpr="Shortcut Dimension 1 Code";
+                Visible=FALSE }
+
+    { 76  ;2   ;Field     ;
+                SourceExpr="Shortcut Dimension 2 Code";
+                Visible=FALSE }
+
+    { 300 ;2   ;Field     ;
+                SourceExpr=ShortcutDimCode[3];
+                CaptionClass='1,2,3';
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             ValidateShortcutDimCode(3,ShortcutDimCode[3]);
+                           END;
+
+                OnLookup=BEGIN
+                           LookupShortcutDimCode(3,ShortcutDimCode[3]);
+                         END;
+                          }
+
+    { 302 ;2   ;Field     ;
+                SourceExpr=ShortcutDimCode[4];
+                CaptionClass='1,2,4';
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             ValidateShortcutDimCode(4,ShortcutDimCode[4]);
+                           END;
+
+                OnLookup=BEGIN
+                           LookupShortcutDimCode(4,ShortcutDimCode[4]);
+                         END;
+                          }
+
+    { 304 ;2   ;Field     ;
+                SourceExpr=ShortcutDimCode[5];
+                CaptionClass='1,2,5';
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             ValidateShortcutDimCode(5,ShortcutDimCode[5]);
+                           END;
+
+                OnLookup=BEGIN
+                           LookupShortcutDimCode(5,ShortcutDimCode[5]);
+                         END;
+                          }
+
+    { 306 ;2   ;Field     ;
+                SourceExpr=ShortcutDimCode[6];
+                CaptionClass='1,2,6';
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             ValidateShortcutDimCode(6,ShortcutDimCode[6]);
+                           END;
+
+                OnLookup=BEGIN
+                           LookupShortcutDimCode(6,ShortcutDimCode[6]);
+                         END;
+                          }
+
+    { 308 ;2   ;Field     ;
+                SourceExpr=ShortcutDimCode[7];
+                CaptionClass='1,2,7';
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             ValidateShortcutDimCode(7,ShortcutDimCode[7]);
+                           END;
+
+                OnLookup=BEGIN
+                           LookupShortcutDimCode(7,ShortcutDimCode[7]);
+                         END;
+                          }
+
+    { 310 ;2   ;Field     ;
+                SourceExpr=ShortcutDimCode[8];
+                CaptionClass='1,2,8';
+                Visible=FALSE;
+                OnValidate=BEGIN
+                             ValidateShortcutDimCode(8,ShortcutDimCode[8]);
+                           END;
+
+                OnLookup=BEGIN
+                           LookupShortcutDimCode(8,ShortcutDimCode[8]);
+                         END;
+                          }
+
+    { 1000000002;2;Field  ;
+                CaptionML=[CYM=Swm Ymrwymedig (LCY);
+                           ENG=Commited Amount (LCY)];
+                SourceExpr="Committed Amount (LCY)" }
+
+    { 43  ;1   ;Group     ;
+                GroupType=Group }
+
+    { 37  ;2   ;Group     ;
+                Visible=false;
+                GroupType=Group }
+
+    { 35  ;3   ;Field     ;
+                Name=Invoice Discount Amount;
+                CaptionML=[ENU=Invoice Discount Amount;
+                           ENG=Invoice Discount Amount];
+                SourceExpr=TotalPurchaseLine."Inv. Discount Amount";
+                AutoFormatType=1;
+                Editable=InvDiscAmountEditable;
+                Style=Subordinate;
+                StyleExpr=RefreshMessageEnabled;
+                OnValidate=VAR
+                             PurchaseHeader@1000 : Record 38;
+                           BEGIN
+                             PurchaseHeader.GET("Document Type","Document No.");
+                             PurchCalcDiscByType.ApplyInvDiscBasedOnAmt(TotalPurchaseLine."Inv. Discount Amount",PurchaseHeader);
+                             CurrPage.UPDATE(FALSE);
+                           END;
+                            }
+
+    { 33  ;3   ;Field     ;
+                Name=Invoice Disc. Pct.;
+                CaptionML=[ENU=Invoice Discount %;
+                           ENG=Invoice Discount %];
+                DecimalPlaces=0:2;
+                SourceExpr=PurchCalcDiscByType.GetVendInvoiceDiscountPct(Rec);
+                Visible=TRUE;
+                Editable=FALSE;
+                Style=Subordinate;
+                StyleExpr=RefreshMessageEnabled }
+
+    { 19  ;2   ;Group     ;
+                GroupType=Group }
+
+    { 17  ;3   ;Field     ;
+                Name=Total Amount Excl. VAT;
+                DrillDown=No;
+                CaptionML=[ENU=Total Amount Excl. VAT;
+                           CYM=Cyfanswm Net heb TAW;
+                           ENG=Total Amount Excl. VAT];
+                SourceExpr=TotalPurchaseLine.Amount;
+                AutoFormatType=1;
+                Editable=FALSE;
+                Style=Subordinate;
+                StyleExpr=RefreshMessageEnabled }
+
+    { 15  ;3   ;Field     ;
+                Name=Total VAT Amount;
+                CaptionML=[ENU=Total VAT;
+                           CYM=Cyfanswm TAW;
+                           ENG=Total VAT];
+                SourceExpr=VATAmount;
+                AutoFormatType=1;
+                Editable=FALSE;
+                Style=Subordinate;
+                StyleExpr=RefreshMessageEnabled }
+
+    { 13  ;3   ;Field     ;
+                Name=Total Amount Incl. VAT;
+                CaptionML=[ENU=Total Amount Incl. VAT;
+                           CYM=Cyfanswm gan gannwys TAW;
+                           ENG=Total Amount Incl. VAT];
+                SourceExpr=TotalPurchaseLine."Amount Including VAT";
+                AutoFormatType=1;
+                Editable=FALSE;
+                StyleExpr=TotalAmountStyle }
+
+    { 11  ;3   ;Field     ;
+                Name=RefreshTotals;
+                DrillDown=Yes;
+                SourceExpr=RefreshMessageText;
+                Enabled=RefreshMessageEnabled;
+                Editable=FALSE;
+                OnDrillDown=BEGIN
+                              DocumentTotals.PurchaseRedistributeInvoiceDiscountAmounts(Rec,VATAmount,TotalPurchaseLine);
+                              CurrPage.UPDATE(FALSE);
+                            END;
+
+                ShowCaption=No }
+
+  }
+  CODE
+  {
+    VAR
+      TotalPurchaseHeader@1009 : Record 38;
+      TotalPurchaseLine@1008 : Record 39;
+      PurchHeader@1005 : Record 38;
+      TransferExtendedText@1002 : Codeunit 378;
+      ItemAvailFormsMgt@1006 : Codeunit 353;
+      Text000@1001 : TextConst 'ENU=Unable to run this function while in View mode.;ENG=Unable to run this function while in View mode.';
+      PurchPriceCalcMgt@1004 : Codeunit 7010;
+      Text001@1007 : TextConst 'ENU=You cannot use the Explode BOM function because a prepayment of the purchase order has been invoiced.;ENG=You cannot use the Explode BOM function because a prepayment of the purchase order has been invoiced.';
+      PurchCalcDiscByType@1010 : Codeunit 66;
+      DocumentTotals@1017 : Codeunit 57;
+      ShortcutDimCode@1003 : ARRAY [8] OF Code[20];
+      UpdateAllowedVar@1000 : Boolean;
+      VATAmount@1018 : Decimal;
+      InvDiscAmountEditable@1016 : Boolean;
+      TotalAmountStyle@1015 : Text;
+      RefreshMessageEnabled@1014 : Boolean;
+      RefreshMessageText@1013 : Text;
+      TypeChosen@1019 : Boolean;
+      GintAdditionalDims@1000000000 : Integer;
+      GbooJobs@1000000001 : Boolean INDATASET;
+      GbooDimVisible@1000000002 : Boolean INDATASET;
+      GbooQTYRecInv@1000000003 : Boolean INDATASET;
+      GbooIsiMileageLine@1000000004 : Boolean;
+
+    PROCEDURE ApproveCalcInvDisc@7();
+    BEGIN
+      CODEUNIT.RUN(CODEUNIT::"Purch.-Disc. (Yes/No)",Rec);
+    END;
+
+    PROCEDURE CalcInvDisc@1();
+    BEGIN
+      CODEUNIT.RUN(CODEUNIT::"Purch.-Calc.Discount",Rec);
+    END;
+
+    PROCEDURE ExplodeBOM@3();
+    BEGIN
+      IF "Prepmt. Amt. Inv." <> 0 THEN
+        ERROR(Text001);
+      CODEUNIT.RUN(CODEUNIT::"Purch.-Explode BOM",Rec);
+    END;
+
+    PROCEDURE OpenSalesOrderForm@5();
+    VAR
+      SalesHeader@1000 : Record 36;
+      SalesOrder@1001 : Page 42;
+    BEGIN
+      TESTFIELD("Sales Order No.");
+      SalesHeader.SETRANGE("No.","Sales Order No.");
+      SalesOrder.SETTABLEVIEW(SalesHeader);
+      SalesOrder.EDITABLE := FALSE;
+      SalesOrder.RUN;
+    END;
+
+    PROCEDURE InsertExtendedText@6(Unconditionally@1000 : Boolean);
+    BEGIN
+      IF TransferExtendedText.PurchCheckIfAnyExtText(Rec,Unconditionally) THEN BEGIN
+        CurrPage.SAVERECORD;
+        TransferExtendedText.InsertPurchExtText(Rec);
+      END;
+      IF TransferExtendedText.MakeUpdate THEN
+        UpdateForm(TRUE);
+    END;
+
+    PROCEDURE ShowTracking@10();
+    VAR
+      TrackingForm@1000 : Page 99000822;
+    BEGIN
+      TrackingForm.SetPurchLine(Rec);
+      TrackingForm.RUNMODAL;
+    END;
+
+    PROCEDURE OpenSpecOrderSalesOrderForm@12();
+    VAR
+      SalesHeader@1000 : Record 36;
+      SalesOrder@1001 : Page 42;
+    BEGIN
+      TESTFIELD("Special Order Sales No.");
+      SalesHeader.SETRANGE("No.","Special Order Sales No.");
+      SalesOrder.SETTABLEVIEW(SalesHeader);
+      SalesOrder.EDITABLE := FALSE;
+      SalesOrder.RUN;
+    END;
+
+    PROCEDURE UpdateForm@13(SetSaveRecord@1000 : Boolean);
+    BEGIN
+      CurrPage.UPDATE(SetSaveRecord);
+    END;
+
+    PROCEDURE SetUpdateAllowed@14(UpdateAllowed@1000 : Boolean);
+    BEGIN
+      UpdateAllowedVar := UpdateAllowed;
+    END;
+
+    PROCEDURE UpdateAllowed@4() : Boolean;
+    BEGIN
+      IF UpdateAllowedVar = FALSE THEN BEGIN
+        MESSAGE(Text000);
+        EXIT(FALSE);
+      END;
+      EXIT(TRUE);
+    END;
+
+    PROCEDURE ShowPrices@17();
+    BEGIN
+      PurchHeader.GET("Document Type","Document No.");
+      CLEAR(PurchPriceCalcMgt);
+      PurchPriceCalcMgt.GetPurchLinePrice(PurchHeader,Rec);
+    END;
+
+    PROCEDURE ShowLineDisc@16();
+    BEGIN
+      PurchHeader.GET("Document Type","Document No.");
+      CLEAR(PurchPriceCalcMgt);
+      PurchPriceCalcMgt.GetPurchLineLineDisc(PurchHeader,Rec);
+    END;
+
+    LOCAL PROCEDURE NoOnAfterValidate@19066594();
+    BEGIN
+      InsertExtendedText(FALSE);
+      IF (Type = Type::"Charge (Item)") AND ("No." <> xRec."No.") AND
+         (xRec."No." <> '')
+      THEN
+        CurrPage.SAVERECORD;
+    END;
+
+    LOCAL PROCEDURE CrossReferenceNoOnAfterValidat@19048248();
+    BEGIN
+      InsertExtendedText(FALSE);
+    END;
+
+    LOCAL PROCEDURE RedistributeTotalsOnAfterValidate@2();
+    BEGIN
+      CurrPage.SAVERECORD;
+
+      PurchHeader.GET("Document Type","Document No.");
+      IF DocumentTotals.PurchaseCheckNumberOfLinesLimit(PurchHeader) THEN
+        DocumentTotals.PurchaseRedistributeInvoiceDiscountAmounts(Rec,VATAmount,TotalPurchaseLine);
+      CurrPage.UPDATE;
+    END;
+
+    LOCAL PROCEDURE SetAdditionalDimValue@1000000002(VbooDrill@1000000001 : Boolean);
+    VAR
+      LcduDocFunct@1000000000 : Codeunit 81001;
+      LrecDimSetEntryTEMP@1000000002 : TEMPORARY Record 480;
+      VintOldDimSetID@1000000003 : Integer;
+    BEGIN
+      CLEAR(GintAdditionalDims);
+      IF VbooDrill THEN BEGIN
+        VintOldDimSetID := "Dimension Set ID";
+        VALIDATE("Dimension Set ID",LcduDocFunct.EditDimensionSet("Dimension Set ID",'Additional Dimensions',"Catalogue Line","Catalogue Code","Shortcut Dimension 1 Code","Shortcut Dimension 2 Code"));
+        IF VintOldDimSetID <> "Dimension Set ID" THEN BEGIN
+        //MODIFY;
+        //IF PurchLinesExist THEN
+          //Rec.UpdateAllLineDim("Dimension Set ID",OldDimSetID);
+      END;
+        //MESSAGE(format(LcduDocFunct.EditDimensionSet("Dimension Set ID",'Additional Dimensions',"Shortcut Dimension 1 Code","Shortcut Dimension 2 Code")));
+      END;
+      LcduDocFunct.LoadTempDimSet("Dimension Set ID",LrecDimSetEntryTEMP);
+      GintAdditionalDims := LcduDocFunct.CheckDims("Catalogue Line","Catalogue Code",LrecDimSetEntryTEMP);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

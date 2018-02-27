@@ -1,0 +1,229 @@
+OBJECT Page 81060 Document Status
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=15:14:55;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Document History;
+               CYM=Hanes;
+               ENG=Document History];
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    LinksAllowed=No;
+    SourceTable=Table81022;
+    PageType=List;
+    SourceTableTemporary=Yes;
+    OnAfterGetRecord=VAR
+                       LrecPH@1000000000 : Record 38;
+                       LrecPInv@1000000001 : Record 122;
+                       LrecDV@1000000002 : Record 349;
+                     BEGIN
+                       IF "Doc Type" = 'INVOICE' THEN BEGIN
+                         //Vendor Order No
+                         LrecPH.RESET;
+                         LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::Invoice);
+                         LrecPH.SETRANGE("No.","Doc. No.");
+                         //IF LrecPH.FINDFIRST THEN "Vendor Order No." := LrecPH."Vendor Order No.";
+                         MODIFY;
+                         LrecPInv.RESET;
+                         //IF LrecPInv.GET("Doc. No.") THEN "Vendor Order No." := LrecPInv."Vendor Order No.";
+                         MODIFY;
+
+                         //Park Description
+                         LrecDV.RESET;
+                         //IF LrecDV.GET('PARK',GD1) THEN "GD1 Description" := LrecDV.Name;
+                         MODIFY;
+                       END;
+                     END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                CaptionML=[CYM=Math o Ddogfen;
+                           ENG=Document Type];
+                SourceExpr="Doc Type";
+                Visible=false }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[CYM=Rhif Dogfen;
+                           ENG=Doc No.];
+                SourceExpr="Doc. No.";
+                OnDrillDown=VAR
+                              LrecPH@1000000001 : Record 38;
+                              LrecPInv@1000000002 : Record 122;
+                              LrecPCred@1000000003 : Record 124;
+                              LpagOrder@1000000005 : Page 81014;
+                              LpagInvoice@1000000006 : Page 51;
+                              LpagPostInv@1000000007 : Page 81017;
+                              LpagCredit@1000000008 : Page 52;
+                              LpagPostCred@1000000009 : Page 140;
+                            BEGIN
+                              CASE "Doc Type" OF
+                                {'PDOC':
+                                    BEGIN
+                                      LrecDoc.SETRANGE("No.","Doc. No.");
+                                      LpagDocCard.SETTABLEVIEW(LrecDoc);
+                                      LpagDocCard.RUNMODAL;
+                                      //IF LrecDoc.GET("Doc. No.") THEN PAGE.RUNMODAL(PAGE::"Document Card Web",LrecDoc);
+                                    END;}
+                                'ORDER':
+                                    BEGIN
+                                      LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::Order);
+                                      LrecPH.SETRANGE("No.","Doc. No.");
+                                      LpagOrder.SETTABLEVIEW(LrecPH);
+                                      IF LrecPH.FINDFIRST THEN LpagOrder.RUNMODAL;
+                                      //IF LrecPH.GET(LrecPH."Document Type"::Order,"Doc. No.")THEN PAGE.RUNMODAL(PAGE::"PO Approved Order",LrecPH);
+                                    END;
+
+                                'ARCHEB': //WELSH TRANSLATION OF ORDER
+                                    BEGIN
+                                      LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::Order);
+                                      LrecPH.SETRANGE("No.","Doc. No.");
+                                      LpagOrder.SETTABLEVIEW(LrecPH);
+                                      IF LrecPH.FINDFIRST THEN LpagOrder.RUNMODAL;
+                                      //IF LrecPH.GET(LrecPH."Document Type"::Order,"Doc. No.")THEN PAGE.RUNMODAL(PAGE::"PO Approved Order",LrecPH);
+                                    END;
+
+                                'INVOICE':
+                                    BEGIN
+                                      //138
+                                      LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::Invoice);
+                                      LrecPH.SETRANGE("No.","Doc. No.");
+                                      LpagInvoice.SETTABLEVIEW(LrecPH);
+                                      IF LrecPH.FINDFIRST THEN LpagInvoice.RUNMODAL;
+                                      //IF LrecPH.GET(LrecPH."Document Type"::Invoice,"Doc. No.")THEN PAGE.RUNMODAL(PAGE::"Invoice Approval",LrecPH);
+
+                                      LrecPInv.SETRANGE("No.","Doc. No.");
+                                      LpagPostInv.SETTABLEVIEW(LrecPInv);
+                                      IF LrecPInv.FINDFIRST THEN LpagPostInv.RUNMODAL;
+                                      //IF LrecPInv.GET("Doc. No.") THEN PAGE.RUNMODAL(PAGE::"Portal Posted Purchase Inv",LrecPInv);
+                                    END;
+
+                                'ANFONEB': //WELSH TRANSLATION OF INVOICE
+                                    BEGIN
+                                      //138
+                                      LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::Invoice);
+                                      LrecPH.SETRANGE("No.","Doc. No.");
+                                      LpagInvoice.SETTABLEVIEW(LrecPH);
+                                      IF LrecPH.FINDFIRST THEN LpagInvoice.RUNMODAL;
+                                      //IF LrecPH.GET(LrecPH."Document Type"::Invoice,"Doc. No.")THEN PAGE.RUNMODAL(PAGE::"Invoice Approval",LrecPH);
+
+                                      LrecPInv.SETRANGE("No.","Doc. No.");
+                                      LpagPostInv.SETTABLEVIEW(LrecPInv);
+                                      IF LrecPInv.FINDFIRST THEN LpagPostInv.RUNMODAL;
+                                      //IF LrecPInv.GET("Doc. No.") THEN PAGE.RUNMODAL(PAGE::"Portal Posted Purchase Inv",LrecPInv);
+                                    END;
+
+                                'CREDIT MEMO':
+                                    BEGIN
+                                      LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::"Credit Memo");
+                                      LrecPH.SETRANGE("No.","Doc. No.");
+                                      LpagOrder.SETTABLEVIEW(LrecPH);
+                                      IF LrecPH.FINDFIRST THEN LpagCredit.RUNMODAL;
+                                      //IF LrecPH.GET(LrecPH."Document Type"::"Credit Memo","Doc. No.")THEN PAGE.RUNMODAL(PAGE::"Credit Approval",LrecPH);
+                                      LrecPCred.SETRANGE("No.","Doc. No.");
+                                      LpagPostCred.SETTABLEVIEW(LrecPCred);
+                                      IF LrecPCred.FINDFIRST THEN LpagPostCred.RUNMODAL;
+                                      //IF LrecPCred.GET("Doc. No.") THEN PAGE.RUNMODAL(PAGE::"Portal Posted Purch Cred Memo",LrecPCred);
+                                    END;
+
+                                'MEMO CREDYD':
+                                    BEGIN
+                                      LrecPH.SETRANGE("Document Type",LrecPH."Document Type"::"Credit Memo");
+                                      LrecPH.SETRANGE("No.","Doc. No.");
+                                      LpagOrder.SETTABLEVIEW(LrecPH);
+                                      IF LrecPH.FINDFIRST THEN LpagCredit.RUNMODAL;
+                                      //IF LrecPH.GET(LrecPH."Document Type"::"Credit Memo","Doc. No.")THEN PAGE.RUNMODAL(PAGE::"Credit Approval",LrecPH);
+                                      LrecPCred.SETRANGE("No.","Doc. No.");
+                                      LpagPostCred.SETTABLEVIEW(LrecPCred);
+                                      IF LrecPCred.FINDFIRST THEN LpagPostCred.RUNMODAL;
+                                      //IF LrecPCred.GET("Doc. No.") THEN PAGE.RUNMODAL(PAGE::"Portal Posted Purch Cred Memo",LrecPCred);
+                                    END;
+                              END;
+                            END;
+                             }
+
+    { 1000000004;2;Field  ;
+                CaptionML=[ENU=Date Created;
+                           CYM=Dyddiad Dogfen];
+                SourceExpr=Date }
+
+    { 1000000005;2;Field  ;
+                CaptionML=[ENU=Vendor No.;
+                           CYM=Rhif Gwerthwr;
+                           ENG=Vendor No.];
+                SourceExpr=Vendor }
+
+    { 1000000006;2;Field  ;
+                CaptionML=[CYM=Gwerthwr;
+                           ENG=Vendor];
+                SourceExpr="Vendor Name" }
+
+    { 1000000007;2;Field  ;
+                CaptionML=[CYM=Statws;
+                           ENG=Approval Status];
+                SourceExpr="Approval Status" }
+
+    { 1000000009;2;Field  ;
+                CaptionML=[CYM=Swm;
+                           ENG=Amount Net];
+                SourceExpr="Amount Net" }
+
+    { 1000000008;2;Field  ;
+                CaptionML=[CYM=Swm gan gynnwys TAW;
+                           ENG=Amount Gross];
+                SourceExpr="Amount Gross" }
+
+    { 1000000010;2;Field  ;
+                SourceExpr=GD1 }
+
+    { 1000000011;2;Field  ;
+                SourceExpr=GD2;
+                Visible=false }
+
+    { 1000000012;2;Field  ;
+                CaptionML=[ENU=Raised by;
+                           CYM=ID Defnyddiwr a Neilltuwyd;
+                           ENG=Raised By];
+                SourceExpr="Person Responsible" }
+
+    { 1000000014;2;Field  ;
+                CaptionML=[CYM=Statws;
+                           ENG=Status];
+                SourceExpr="Order Status";
+                Visible=false }
+
+    { 1000000015;2;Field  ;
+                SourceExpr="External Document No.";
+                Visible=false }
+
+    { 1000000013;2;Field  ;
+                CaptionML=[CYM=Derbyniwyd y Cyfan;
+                           ENG=Completely Recieved];
+                SourceExpr="Completely Received" }
+
+  }
+  CODE
+  {
+    VAR
+      GtxtVendOrdNo@1000000000 : Text[50];
+
+    BEGIN
+    END.
+  }
+}
+
