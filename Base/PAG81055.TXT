@@ -1,0 +1,70 @@
+OBJECT Page 81055 TA Dim Template Detail
+{
+  OBJECT-PROPERTIES
+  {
+    Date=13/09/17;
+    Time=12:16:18;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    DeleteAllowed=Yes;
+    SourceTable=Table81020;
+    PageType=ListPart;
+    OnAfterGetRecord=BEGIN
+                       UpdateDimText;
+                     END;
+
+    OnModifyRecord=BEGIN
+                     UpdateDimText;
+                   END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr="Dimension Code" }
+
+    { 1000000003;2;Field  ;
+                SourceExpr="Dimension Value";
+                OnValidate=BEGIN
+                             //UpdateDimText;
+                           END;
+                            }
+
+    { 1000000005;2;Field  ;
+                Name=Dimension Value Description;
+                SourceExpr=GtxtDimDesc;
+                Editable=false }
+
+    { 1000000004;2;Field  ;
+                SourceExpr=Default;
+                Visible=false }
+
+  }
+  CODE
+  {
+    VAR
+      GtxtDimDesc@1000000000 : Text[50];
+
+    LOCAL PROCEDURE UpdateDimText@1000000000();
+    VAR
+      DimensionValue@1000000000 : Record 349;
+    BEGIN
+      CLEAR(GtxtDimDesc);
+      IF DimensionValue.GET("Dimension Code","Dimension Value") THEN GtxtDimDesc := DimensionValue.Name;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

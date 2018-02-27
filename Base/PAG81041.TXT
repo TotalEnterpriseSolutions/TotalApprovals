@@ -1,0 +1,49 @@
+OBJECT Page 81041 TA Role
+{
+  OBJECT-PROPERTIES
+  {
+    Date=14/09/17;
+    Time=16:43:26;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Total Approval Role;
+               ENG=Total Approval Role];
+    SourceTable=Table81012;
+    PageType=List;
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr=Code }
+
+    { 1000000003;2;Field  ;
+                SourceExpr=Description }
+
+    { 1000000004;2;Field  ;
+                SourceExpr=Businesswide }
+
+    { 1000000005;2;Field  ;
+                SourceExpr="Seniority Level" }
+
+    { 1000000007;2;Field  ;
+                SourceExpr="Role Assignments" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

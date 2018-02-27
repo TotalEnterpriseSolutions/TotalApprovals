@@ -1,0 +1,92 @@
+OBJECT Page 81033 Procurement Workflow List WEB
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=14:46:10;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=[ENU=Please select a Document Type;
+               CYM=Dewiswch math o ddogfen;
+               ENG=Please select a Document Type];
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    LinksAllowed=No;
+    SourceTable=Table81001;
+    PageType=List;
+    ShowFilter=No;
+    OnOpenPage=BEGIN
+
+                 IF CURRENTCLIENTTYPE = CLIENTTYPE::Windows THEN CurrPage.EDITABLE := TRUE ELSE CurrPage.EDITABLE := FALSE;
+               END;
+
+    OnAfterGetRecord=VAR
+                       DocumentTypeCatalogue@1000000000 : Record 81005;
+                     BEGIN
+                       CatCount := 0;
+                       DocumentTypeCatalogue.RESET;
+                       DocumentTypeCatalogue.SETRANGE("Document Type","Procurement Workflow");
+                       CatCount := DocumentTypeCatalogue.COUNT;
+                     END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                Editable=TRUE;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                Lookup=No;
+                DrillDown=No;
+                CaptionML=;
+                SourceExpr="Procurement Workflow" }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[CYM=Disgrifiad;
+                           ENG=Description];
+                SourceExpr=Description }
+
+    { 1000000004;2;Field  ;
+                CaptionML=[CYM=Defnydd;
+                           ENG=Usage];
+                SourceExpr=Usage }
+
+    { 1000000005;2;Field  ;
+                SourceExpr="Maps to NAV Type";
+                Visible=FALSE }
+
+    { 1000000008;2;Field  ;
+                Name=Catalogue Count;
+                CaptionML=[ENU=Catalogue Count;
+                           ENG=Catalogue Count];
+                SourceExpr=CatCount;
+                TableRelation="Procurement Workflow Catalogue"."Document Type" WHERE (Document Type=FIELD(Procurement Workflow));
+                Visible=FALSE;
+                Editable=false }
+
+    { 1000000011;2;Field  ;
+                SourceExpr="System Area Type";
+                Visible=FALSE }
+
+  }
+  CODE
+  {
+    VAR
+      CatCount@1000000000 : Integer;
+      CanEdit@1000000001 : Boolean;
+
+    BEGIN
+    END.
+  }
+}
+

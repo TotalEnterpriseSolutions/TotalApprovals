@@ -1,0 +1,1031 @@
+OBJECT Page 81011 TA Purchase Return Order
+{
+  OBJECT-PROPERTIES
+  {
+    Date=31/08/17;
+    Time=14:05:49;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Purchase Return Order;
+               ENG=Purchase Return Order];
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    SourceTable=Table38;
+    SourceTableView=WHERE(Document Type=FILTER(Return Order));
+    PageType=Document;
+    RefreshOnActivate=Yes;
+    OnOpenPage=BEGIN
+                 IF UserMgt.GetPurchasesFilter <> '' THEN BEGIN
+                   FILTERGROUP(2);
+                   SETRANGE("Responsibility Center",UserMgt.GetPurchasesFilter);
+                   FILTERGROUP(0);
+                 END;
+
+                 SetDocNoVisible;
+
+                 //P.Light01+
+                 SetCaption;
+                 SetBTNState;
+                 //P.Light01-
+               END;
+
+    OnAfterGetRecord=BEGIN
+                       JobQueueVisible := "Job Queue Status" = "Job Queue Status"::"Scheduled for Posting";
+
+                       //P.Light01+
+                       CurrPage.PortalAttachmentFactBox.PAGE.SetRecordID(Rec.RECORDID);
+                       CurrPage.PortalAttachmentFactBox.PAGE.UpdatePage;
+                       //P.Light01-
+
+
+                       //P.Light01+
+                       ZSetAdditionalDimValue(FALSE);
+                       UpdateShortcutDims;
+                     END;
+
+    OnNewRecord=BEGIN
+                  "Responsibility Center" := UserMgt.GetPurchasesFilter;
+                END;
+
+    OnDeleteRecord=BEGIN
+                     CurrPage.SAVERECORD;
+                     EXIT(ConfirmDeletion);
+                   END;
+
+    ActionList=ACTIONS
+    {
+      { 1900000003;0 ;ActionContainer;
+                      ActionContainerType=RelatedInformation }
+      { 47      ;1   ;ActionGroup;
+                      CaptionML=[ENU=&Return Order;
+                                 CYM=Gorchymyn Dychwelyd;
+                                 ENG=&Return Order];
+                      Image=Return }
+      { 105     ;2   ;Action    ;
+                      AccessByPermission=TableData 348=R;
+                      ShortCutKey=Shift+Ctrl+D;
+                      CaptionML=[ENU=Dimensions STD;
+                                 ENG=Dimensions];
+                      Visible=false;
+                      Image=Dimensions;
+                      OnAction=BEGIN
+                                 ShowDocDim;
+                                 CurrPage.SAVERECORD;
+                               END;
+                                }
+      { 1000000010;2 ;Action    ;
+                      Name=Portal Dimensions;
+                      CaptionML=[ENU=Dimensions;
+                                 CYM=Dimensiwn;
+                                 ENG=Dimensions];
+                      Promoted=No;
+                      Visible=GbooEditable;
+                      Image=Dimensions;
+                      OnAction=BEGIN
+                                 SetAdditionalDimValue(TRUE);
+                               END;
+                                }
+      { 49      ;2   ;Action    ;
+                      Name=Statistics;
+                      ShortCutKey=F7;
+                      CaptionML=[ENU=Statistics;
+                                 CYM=Ystadegau;
+                                 ENG=Statistics];
+                      Promoted=Yes;
+                      Image=Statistics;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 CalcInvDiscForHeader;
+                                 COMMIT;
+                                 PAGE.RUNMODAL(PAGE::"Purchase Order Statistics",Rec);
+                                 PurchCalcDiscByType.ResetRecalculateInvoiceDisc(Rec);
+                               END;
+                                }
+      { 50      ;2   ;Action    ;
+                      ShortCutKey=Shift+F7;
+                      CaptionML=[ENU=Vendor;
+                                 ENG=Vendor];
+                      RunObject=Page 26;
+                      RunPageLink=No.=FIELD(Buy-from Vendor No.);
+                      Visible=false;
+                      Image=Vendor }
+      { 141     ;2   ;Action    ;
+                      CaptionML=[ENU=Approvals;
+                                 CYM=Cymeradwyo;
+                                 ENG=Approvals];
+                      Image=Approvals;
+                      OnAction=VAR
+                                 ApprovalEntries@1000 : Page 658;
+                               BEGIN
+                                 ApprovalEntries.Setfilters(DATABASE::"Purchase Header","Document Type","No.");
+                                 ApprovalEntries.RUN;
+                               END;
+                                }
+      { 1000000008;2 ;Action    ;
+                      Name=Portal Attachments;
+                      CaptionML=[ENU=Attachments;
+                                 ENG=Attachments];
+                      Promoted=Yes;
+                      Visible=GbooEditable;
+                      PromotedIsBig=Yes;
+                      Image=Attach;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 LpagPortalAttachments@1000000000 : Page 81026;
+                               BEGIN
+                                 LpagPortalAttachments.SetRecordID(RECORDID);
+                                 LpagPortalAttachments.RUNMODAL();
+                               END;
+                                }
+      { 51      ;2   ;Action    ;
+                      CaptionML=[ENU=Co&mments;
+                                 CYM=Sylwadau;
+                                 ENG=Co&mments];
+                      RunObject=Page 66;
+                      RunPageLink=Document Type=FIELD(Document Type),
+                                  No.=FIELD(No.),
+                                  Document Line No.=CONST(0);
+                      Image=ViewComments }
+      { 1000000012;2 ;Action    ;
+                      Name=Delete;
+                      CaptionML=[ENU=Delete;
+                                 CYM=Dileu;
+                                 ENG=Delete];
+                      Promoted=Yes;
+                      Visible=gboodelete;
+                      Image=Delete;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 VALIDATE(Deleted,TRUE);
+                               END;
+                                }
+      { 9       ;1   ;ActionGroup;
+                      CaptionML=[ENU=Documents;
+                                 ENG=Documents];
+                      Visible=false;
+                      Image=Documents }
+      { 5801    ;2   ;Action    ;
+                      CaptionML=[ENU=Return Shipments;
+                                 CYM=Cludo Dychwelyd;
+                                 ENG=Return Shipments];
+                      RunObject=Page 6652;
+                      RunPageView=SORTING(Return Order No.);
+                      RunPageLink=Return Order No.=FIELD(No.);
+                      Image=Shipment }
+      { 117     ;2   ;Action    ;
+                      CaptionML=[ENU=Cred&it Memos;
+                                 ENG=Cred&it Memos];
+                      RunObject=Page 147;
+                      RunPageView=SORTING(Return Order No.);
+                      RunPageLink=Return Order No.=FIELD(No.);
+                      Image=CreditMemo }
+      { 136     ;2   ;Separator  }
+      { 11      ;1   ;ActionGroup;
+                      CaptionML=[ENU=Warehouse;
+                                 ENG=Warehouse];
+                      Visible=false;
+                      Image=Warehouse }
+      { 114     ;2   ;Action    ;
+                      CaptionML=[ENU=Whse. Shipment Lines;
+                                 ENG=Whse. Shipment Lines];
+                      RunObject=Page 7341;
+                      RunPageView=SORTING(Source Type,Source Subtype,Source No.,Source Line No.);
+                      RunPageLink=Source Type=CONST(39),
+                                  Source Subtype=FIELD(Document Type),
+                                  Source No.=FIELD(No.);
+                      Image=ShipmentLines }
+      { 129     ;2   ;Action    ;
+                      CaptionML=[ENU=In&vt. Put-away/Pick Lines;
+                                 ENG=In&vt. Put-away/Pick Lines];
+                      RunObject=Page 5774;
+                      RunPageView=SORTING(Source Document,Source No.,Location Code);
+                      RunPageLink=Source Document=CONST(Purchase Return Order),
+                                  Source No.=FIELD(No.);
+                      Image=PickLines }
+      { 1900000004;0 ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 104     ;1   ;Action    ;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=&Print;
+                                 ENG=&Print];
+                      Promoted=Yes;
+                      Visible=GbooPost;
+                      Image=Print;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 DocPrint.PrintPurchHeader(Rec);
+                               END;
+                                }
+      { 13      ;1   ;ActionGroup;
+                      CaptionML=[ENU=Release;
+                                 ENG=Release];
+                      Visible=False;
+                      Image=ReleaseDoc }
+      { 112     ;2   ;Action    ;
+                      ShortCutKey=Ctrl+F9;
+                      CaptionML=[ENU=Re&lease;
+                                 ENG=Re&lease];
+                      Promoted=Yes;
+                      Image=ReleaseDoc;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 ReleasePurchDoc@1000 : Codeunit 415;
+                               BEGIN
+                                 ReleasePurchDoc.PerformManualRelease(Rec);
+                               END;
+                                }
+      { 113     ;2   ;Action    ;
+                      CaptionML=[ENU=Re&open;
+                                 ENG=Re&open];
+                      Image=ReOpen;
+                      OnAction=VAR
+                                 ReleasePurchDoc@1001 : Codeunit 415;
+                               BEGIN
+                                 ReleasePurchDoc.PerformManualReopen(Rec);
+                               END;
+                                }
+      { 690     ;2   ;Separator  }
+      { 52      ;1   ;ActionGroup;
+                      CaptionML=[ENU=F&unctions;
+                                 ENG=F&unctions];
+                      Visible=False;
+                      Image=Action }
+      { 285     ;2   ;Action    ;
+                      Name=GetPostedDocumentLinesToReverse;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Get Posted Doc&ument Lines to Reverse;
+                                 ENG=Get Posted Doc&ument Lines to Reverse];
+                      Promoted=Yes;
+                      Visible=False;
+                      PromotedIsBig=Yes;
+                      Image=ReverseLines;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 GetPstdDocLinesToRevere;
+                               END;
+                                }
+      { 119     ;2   ;Action    ;
+                      ShortCutKey=Shift+F11;
+                      CaptionML=[ENU=Apply Entries;
+                                 ENG=Apply Entries];
+                      Promoted=Yes;
+                      Image=ApplyEntries;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 CODEUNIT.RUN(CODEUNIT::"Purchase Header Apply",Rec);
+                               END;
+                                }
+      { 130     ;2   ;Separator  }
+      { 53      ;2   ;Action    ;
+                      Name=CalculateInvoiceDiscount;
+                      AccessByPermission=TableData 24=R;
+                      CaptionML=[ENU=Calculate &Invoice Discount;
+                                 ENG=Calculate &Invoice Discount];
+                      Image=CalculateInvoiceDiscount;
+                      OnAction=BEGIN
+                                 ApproveCalcInvDisc;
+                                 PurchCalcDiscByType.ResetRecalculateInvoiceDisc(Rec);
+                               END;
+                                }
+      { 132     ;2   ;Separator  }
+      { 54      ;2   ;Action    ;
+                      Name=CopyDocument;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Copy Document;
+                                 ENG=Copy Document];
+                      Promoted=Yes;
+                      Visible=False;
+                      Image=CopyDocument;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 CopyPurchDoc.SetPurchHeader(Rec);
+                                 CopyPurchDoc.RUNMODAL;
+                                 CLEAR(CopyPurchDoc);
+                               END;
+                                }
+      { 120     ;2   ;Action    ;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Move Negative Lines;
+                                 ENG=Move Negative Lines];
+                      Visible=False;
+                      Image=MoveNegativeLines;
+                      OnAction=BEGIN
+                                 CLEAR(MoveNegPurchLines);
+                                 MoveNegPurchLines.SetPurchHeader(Rec);
+                                 MoveNegPurchLines.RUNMODAL;
+                                 MoveNegPurchLines.ShowDocument;
+                               END;
+                                }
+      { 142     ;2   ;Action    ;
+                      CaptionML=[ENU=Archive Document;
+                                 ENG=Archive Document];
+                      Image=Archive;
+                      OnAction=BEGIN
+                                 ArchiveManagement.ArchivePurchDocument(Rec);
+                                 CurrPage.UPDATE(FALSE);
+                               END;
+                                }
+      { 134     ;2   ;Separator  }
+      { 19      ;1   ;ActionGroup;
+                      CaptionML=[ENU=Warehouse;
+                                 ENG=Warehouse];
+                      Visible=False;
+                      Image=Warehouse }
+      { 93      ;2   ;Action    ;
+                      AccessByPermission=TableData 7320=R;
+                      CaptionML=[ENU=Create &Whse. Shipment;
+                                 ENG=Create &Whse. Shipment];
+                      Image=NewShipment;
+                      OnAction=VAR
+                                 GetSourceDocOutbound@1000 : Codeunit 5752;
+                               BEGIN
+                                 GetSourceDocOutbound.CreateFromPurchaseReturnOrder(Rec);
+                               END;
+                                }
+      { 118     ;2   ;Action    ;
+                      AccessByPermission=TableData 7342=R;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Create Inventor&y Put-away/Pick;
+                                 ENG=Create Inventor&y Put-away/Pick];
+                      Image=CreateInventoryPickup;
+                      OnAction=BEGIN
+                                 CreateInvtPutAwayPick;
+                               END;
+                                }
+      { 135     ;2   ;Separator  }
+      { 57      ;1   ;ActionGroup;
+                      CaptionML=[ENU=P&osting;
+                                 ENG=P&osting];
+                      Image=Post }
+      { 59      ;2   ;Action    ;
+                      ShortCutKey=F9;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=P&ost;
+                                 ENG=P&ost];
+                      Promoted=Yes;
+                      Visible=GbooPost;
+                      PromotedIsBig=Yes;
+                      Image=PostOrder;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 Post(CODEUNIT::"Purch.-Post (Yes/No)");
+                               END;
+                                }
+      { 58      ;2   ;Action    ;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Test Report;
+                                 ENG=Test Report];
+                      Visible=False;
+                      Image=TestReport;
+                      OnAction=BEGIN
+                                 ReportPrint.PrintPurchHeader(Rec);
+                               END;
+                                }
+      { 60      ;2   ;Action    ;
+                      ShortCutKey=Shift+F9;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Post and &Print;
+                                 ENG=Post and &Print];
+                      Promoted=Yes;
+                      Visible=False;
+                      PromotedIsBig=Yes;
+                      Image=PostPrint;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 Post(CODEUNIT::"Purch.-Post + Print");
+                               END;
+                                }
+      { 61      ;2   ;Action    ;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Post &Batch;
+                                 ENG=Post &Batch];
+                      Visible=False;
+                      Image=PostBatch;
+                      OnAction=BEGIN
+                                 REPORT.RUNMODAL(REPORT::"Batch Post Purch. Ret. Orders",TRUE,TRUE,Rec);
+                                 CurrPage.UPDATE(FALSE);
+                               END;
+                                }
+      { 5       ;2   ;Action    ;
+                      CaptionML=[ENU=Remove From Job Queue;
+                                 ENG=Remove From Job Queue];
+                      Visible=JobQueueVisible;
+                      Image=RemoveLine;
+                      OnAction=BEGIN
+                                 CancelBackgroundPosting;
+                               END;
+                                }
+      { 1000000013;2 ;Action    ;
+                      Name=<Action1000000017>;
+                      CaptionML=[ENU=Complete Order;
+                                 ENG=Complete Order];
+                      Promoted=Yes;
+                      Visible=GbooPost;
+                      PromotedIsBig=Yes;
+                      Image=ReleaseDoc;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 LcduDocFunct@1000000000 : Codeunit 81001;
+                               BEGIN
+                                 LcduDocFunct.ClosePurchaseOrder(Rec);
+                                 CurrPage.CLOSE;
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000000;1;Field  ;
+                SourceExpr="Error Text";
+                Importance=Promoted;
+                Editable=false;
+                Style=Unfavorable;
+                StyleExpr=TRUE;
+                ShowCaption=No }
+
+    { 1   ;1   ;Group     ;
+                CaptionML=[ENU=General;
+                           ENG=General] }
+
+    { 2   ;2   ;Field     ;
+                SourceExpr="No.";
+                Importance=Promoted;
+                Visible=DocNoVisible;
+                Editable=False;
+                Style=Strong;
+                StyleExpr=TRUE;
+                OnAssistEdit=BEGIN
+                               IF AssistEdit(xRec) THEN
+                                 CurrPage.UPDATE;
+                             END;
+                              }
+
+    { 1000000001;2;Field  ;
+                SourceExpr="Unapproved No." }
+
+    { 4   ;2   ;Field     ;
+                DrillDown=No;
+                SourceExpr="Buy-from Vendor No.";
+                Importance=Promoted;
+                LookupPageID=TA Vendor Card;
+                DrillDownPageID=TA Vendor List;
+                OnValidate=BEGIN
+                             BuyfromVendorNoOnAfterValidate;
+                             //P.Light01+
+                             VendorNoValidate;
+                             //P.Light01-
+                           END;
+                            }
+
+    { 125 ;2   ;Field     ;
+                SourceExpr="Buy-from Contact No.";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 6   ;2   ;Field     ;
+                SourceExpr="Buy-from Vendor Name";
+                Editable=false;
+                QuickEntry=FALSE }
+
+    { 63  ;2   ;Field     ;
+                SourceExpr="Buy-from Address";
+                Editable=false;
+                QuickEntry=FALSE }
+
+    { 65  ;2   ;Field     ;
+                SourceExpr="Buy-from Address 2";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 1040000;2;Field     ;
+                SourceExpr="Buy-from City";
+                Visible=false }
+
+    { 1040002;2;Field     ;
+                SourceExpr="Buy-from County";
+                Visible=false }
+
+    { 68  ;2   ;Field     ;
+                SourceExpr="Buy-from Post Code";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 8   ;2   ;Field     ;
+                SourceExpr="Buy-from Contact";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 146 ;2   ;Field     ;
+                SourceExpr="No. of Archived Versions";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 12  ;2   ;Field     ;
+                SourceExpr="Posting Date";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 121 ;2   ;Field     ;
+                SourceExpr="Order Date";
+                Importance=Promoted;
+                Editable=false;
+                QuickEntry=FALSE }
+
+    { 39  ;2   ;Field     ;
+                SourceExpr="Document Date";
+                QuickEntry=FALSE }
+
+    { 1000000002;2;Field  ;
+                CaptionML=[ENU=Approval Document Type;
+                           ENG=Approval Document Type];
+                SourceExpr="Procurement Workflow";
+                Editable=false }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[ENU=Description;
+                           ENG=Description];
+                SourceExpr="Posting Description" }
+
+    { 115 ;2   ;Field     ;
+                SourceExpr="Vendor Authorization No.";
+                Importance=Promoted;
+                Visible=false }
+
+    { 14  ;2   ;Field     ;
+                SourceExpr="Vendor Cr. Memo No.";
+                Importance=Promoted }
+
+    { 72  ;2   ;Field     ;
+                SourceExpr="Order Address Code";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 10  ;2   ;Field     ;
+                SourceExpr="Purchaser Code";
+                OnValidate=BEGIN
+                             PurchaserCodeOnAfterValidate;
+                           END;
+
+                QuickEntry=FALSE }
+
+    { 1102601000;2;Field  ;
+                SourceExpr="Campaign No.";
+                Visible=false;
+                QuickEntry=FALSE }
+
+    { 107 ;2   ;Field     ;
+                SourceExpr="Responsibility Center";
+                QuickEntry=FALSE }
+
+    { 56  ;2   ;Field     ;
+                SourceExpr="Assigned User ID";
+                Editable=false;
+                QuickEntry=FALSE }
+
+    { 7   ;2   ;Field     ;
+                SourceExpr="Job Queue Status";
+                Importance=Additional;
+                QuickEntry=FALSE }
+
+    { 96  ;2   ;Field     ;
+                SourceExpr="Expected Receipt Date";
+                Importance=Promoted }
+
+    { 101 ;2   ;Field     ;
+                SourceExpr=Status;
+                Importance=Promoted;
+                QuickEntry=FALSE }
+
+    { 1000000007;1;Group  ;
+                CaptionML=ENU=Coding Information;
+                Editable=GbooEditable;
+                GroupType=Group }
+
+    { 1000000006;2;Field  ;
+                SourceExpr="Shortcut Dimension 1 Code";
+                Visible=GbooShowGD1;
+                OnValidate=BEGIN
+                             ShortcutDimension1CodeOnAfterV;
+                             //P.Light01+
+                             SetAdditionalDimValue(FALSE);
+                           END;
+                            }
+
+    { 1000000005;2;Field  ;
+                SourceExpr="Shortcut Dimension 2 Code";
+                Visible=GbooShowGD2;
+                OnValidate=BEGIN
+                             ShortcutDimension2CodeOnAfterV;
+                             //P.Light01+
+                             SetAdditionalDimValue(FALSE);
+                           END;
+                            }
+
+    { 1000000004;2;Field  ;
+                CaptionML=ENU=Missing Dimensions;
+                SourceExpr=GintAdditionalDims;
+                Importance=Promoted;
+                Editable=false;
+                OnDrillDown=BEGIN
+                              Rec.SetAdditionalDimValue(TRUE);
+                            END;
+                             }
+
+    { 1905885101;1;Group  ;
+                CaptionML=[ENU=Invoicing;
+                           ENG=Invoicing];
+                Visible=false }
+
+    { 20  ;2   ;Field     ;
+                SourceExpr="Pay-to Vendor No.";
+                Importance=Promoted;
+                OnValidate=BEGIN
+                             PaytoVendorNoOnAfterValidate;
+                             //P.Light01+
+                             VendorNoValidate;
+                             //P/Light01-
+                           END;
+                            }
+
+    { 127 ;2   ;Field     ;
+                SourceExpr="Pay-to Contact No." }
+
+    { 22  ;2   ;Field     ;
+                SourceExpr="Pay-to Name" }
+
+    { 24  ;2   ;Field     ;
+                SourceExpr="Pay-to Address" }
+
+    { 26  ;2   ;Field     ;
+                SourceExpr="Pay-to Address 2" }
+
+    { 1040004;2;Field     ;
+                SourceExpr="Pay-to City" }
+
+    { 1040006;2;Field     ;
+                SourceExpr="Pay-to County" }
+
+    { 73  ;2   ;Field     ;
+                SourceExpr="Pay-to Post Code" }
+
+    { 30  ;2   ;Field     ;
+                SourceExpr="Pay-to Contact" }
+
+    { 16  ;2   ;Field     ;
+                SourceExpr="Applies-to Doc. Type";
+                Importance=Promoted }
+
+    { 18  ;2   ;Field     ;
+                SourceExpr="Applies-to Doc. No.";
+                Importance=Promoted }
+
+    { 94  ;2   ;Field     ;
+                SourceExpr="Applies-to ID" }
+
+    { 110 ;2   ;Field     ;
+                SourceExpr="Prices Including VAT";
+                OnValidate=BEGIN
+                             PricesIncludingVATOnAfterValid;
+                           END;
+                            }
+
+    { 139 ;2   ;Field     ;
+                SourceExpr="VAT Bus. Posting Group" }
+
+    { 1906801201;1;Group  ;
+                CaptionML=[ENU=Shipping;
+                           ENG=Shipping];
+                Visible=gbooeditable }
+
+    { 80  ;2   ;Field     ;
+                SourceExpr="Location Code";
+                Importance=Promoted }
+
+    { 32  ;2   ;Field     ;
+                SourceExpr="Ship-to Name";
+                Editable=false }
+
+    { 34  ;2   ;Field     ;
+                SourceExpr="Ship-to Address";
+                Visible=false }
+
+    { 36  ;2   ;Field     ;
+                SourceExpr="Ship-to Address 2";
+                Visible=false }
+
+    { 1040008;2;Field     ;
+                SourceExpr="Ship-to City";
+                Visible=false }
+
+    { 1040010;2;Field     ;
+                SourceExpr="Ship-to County";
+                Visible=false }
+
+    { 83  ;2   ;Field     ;
+                SourceExpr="Ship-to Post Code";
+                Visible=false }
+
+    { 40  ;2   ;Field     ;
+                SourceExpr="Ship-to Contact";
+                Visible=false }
+
+    { 46  ;1   ;Part      ;
+                Name=PurchLines;
+                SubPageLink=Document No.=FIELD(No.);
+                PagePartID=Page81012 }
+
+    { 1907468901;1;Group  ;
+                CaptionML=[ENU=Foreign Trade;
+                           ENG=Foreign Trade];
+                Visible=false }
+
+    { 91  ;2   ;Field     ;
+                SourceExpr="Currency Code";
+                Importance=Promoted;
+                OnValidate=BEGIN
+                             CurrPage.UPDATE;
+                             PurchCalcDiscByType.ApplyDefaultInvoiceDiscount(0,Rec);
+                           END;
+
+                OnAssistEdit=BEGIN
+                               IF "Posting Date" <> 0D THEN
+                                 ChangeExchangeRate.SetParameter("Currency Code","Currency Factor","Posting Date")
+                               ELSE
+                                 ChangeExchangeRate.SetParameter("Currency Code","Currency Factor",WORKDATE);
+                               IF ChangeExchangeRate.RUNMODAL = ACTION::OK THEN BEGIN
+                                 VALIDATE("Currency Factor",ChangeExchangeRate.GetParameter);
+                                 CurrPage.UPDATE;
+                               END;
+                               CLEAR(ChangeExchangeRate);
+                             END;
+                              }
+
+    { 42  ;2   ;Field     ;
+                SourceExpr="Transaction Type" }
+
+    { 89  ;2   ;Field     ;
+                SourceExpr="Transaction Specification" }
+
+    { 44  ;2   ;Field     ;
+                SourceExpr="Transport Method" }
+
+    { 85  ;2   ;Field     ;
+                SourceExpr="Entry Point" }
+
+    { 87  ;2   ;Field     ;
+                SourceExpr=Area }
+
+    { 1000000014;1;Part   ;
+                CaptionML=ENU=Approval Entries;
+                SubPageLink=Table ID=CONST(38),
+                            Document Type=FIELD(Document Type),
+                            Document No.=FIELD(No.);
+                PagePartID=Page81029;
+                Editable=false;
+                PartType=Page }
+
+    { 1900000007;0;Container;
+                ContainerType=FactBoxArea }
+
+    { 1906354007;1;Part   ;
+                SubPageLink=Table ID=CONST(38),
+                            Document Type=FIELD(Document Type),
+                            Document No.=FIELD(No.),
+                            Status=CONST(Open);
+                PagePartID=Page9092;
+                Visible=FALSE;
+                PartType=Page }
+
+    { 1901138007;1;Part   ;
+                SubPageLink=No.=FIELD(Buy-from Vendor No.);
+                PagePartID=Page9093;
+                Visible=false;
+                PartType=Page }
+
+    { 1904651607;1;Part   ;
+                SubPageLink=No.=FIELD(Buy-from Vendor No.);
+                PagePartID=Page9094;
+                Visible=FALSE;
+                PartType=Page }
+
+    { 1903435607;1;Part   ;
+                SubPageLink=No.=FIELD(Buy-from Vendor No.);
+                PagePartID=Page9095;
+                Visible=false;
+                PartType=Page }
+
+    { 1906949207;1;Part   ;
+                SubPageLink=No.=FIELD(Pay-to Vendor No.);
+                PagePartID=Page9096;
+                Visible=FALSE;
+                PartType=Page }
+
+    { 1000000009;1;Part   ;
+                SubPageLink=Dimension Set ID=FIELD(Dimension Set ID);
+                PagePartID=Page81048;
+                ProviderID=46;
+                Editable=FALSE;
+                PartType=Page }
+
+    { 1000000015;1;Part   ;
+                Name=PortalAttachmentFactBox;
+                PagePartID=Page81025;
+                PartType=Page }
+
+    { 3   ;1   ;Part      ;
+                SubPageLink=Document Type=FIELD(Document Type),
+                            Document No.=FIELD(Document No.),
+                            Line No.=FIELD(Line No.);
+                PagePartID=Page9100;
+                ProviderID=46;
+                Visible=FALSE;
+                PartType=Page }
+
+    { 1900383207;1;Part   ;
+                Visible=FALSE;
+                PartType=System;
+                SystemPartID=RecordLinks }
+
+    { 1905767507;1;Part   ;
+                Visible=TRUE;
+                PartType=System;
+                SystemPartID=Notes }
+
+  }
+  CODE
+  {
+    VAR
+      ChangeExchangeRate@1001 : Page 511;
+      CopyPurchDoc@1002 : Report 492;
+      MoveNegPurchLines@1006 : Report 6698;
+      DocPrint@1005 : Codeunit 229;
+      ReportPrint@1003 : Codeunit 228;
+      UserMgt@1004 : Codeunit 5700;
+      ArchiveManagement@1007 : Codeunit 5063;
+      PurchCalcDiscByType@1009 : Codeunit 66;
+      JobQueueVisible@1000 : Boolean INDATASET;
+      DocNoVisible@1008 : Boolean;
+      GintAdditionalDims@1000000014 : Integer;
+      GbooPost@1000000013 : Boolean INDATASET;
+      GbooNew@1000000012 : Boolean INDATASET;
+      GbooApproved@1000000011 : Boolean INDATASET;
+      GbooError@1000000010 : Boolean INDATASET;
+      GbooDelete@1000000009 : Boolean INDATASET;
+      GbooJobs@1000000008 : Boolean INDATASET;
+      GbooSubmitted@1000000007 : Boolean INDATASET;
+      GbooApprovalCancel@1000000006 : Boolean INDATASET;
+      GbooApprovalSubmit@1000000005 : Boolean INDATASET;
+      GbooShowGD1@1000000004 : Boolean INDATASET;
+      GbooShowGD2@1000000003 : Boolean INDATASET;
+      GbooShowExpDate@1000000002 : Boolean INDATASET;
+      GtxtCaption@1000000001 : Text INDATASET;
+      GbooEditable@1000000000 : Boolean INDATASET;
+
+    LOCAL PROCEDURE Post@4(PostingCodeunitID@1000 : Integer);
+    BEGIN
+      SendToPosting(PostingCodeunitID);
+      IF "Job Queue Status" = "Job Queue Status"::"Scheduled for Posting" THEN
+        CurrPage.CLOSE;
+      CurrPage.UPDATE(FALSE);
+    END;
+
+    LOCAL PROCEDURE ApproveCalcInvDisc@1();
+    BEGIN
+      CurrPage.PurchLines.PAGE.ApproveCalcInvDisc;
+    END;
+
+    LOCAL PROCEDURE BuyfromVendorNoOnAfterValidate@19032492();
+    BEGIN
+      IF GETFILTER("Buy-from Vendor No.") = xRec."Buy-from Vendor No." THEN
+        IF "Buy-from Vendor No." <> xRec."Buy-from Vendor No." THEN
+          SETRANGE("Buy-from Vendor No.");
+      CurrPage.UPDATE;
+    END;
+
+    LOCAL PROCEDURE PurchaserCodeOnAfterValidate@19046120();
+    BEGIN
+      CurrPage.PurchLines.PAGE.UpdateForm(TRUE);
+    END;
+
+    LOCAL PROCEDURE PaytoVendorNoOnAfterValidate@19048314();
+    BEGIN
+      CurrPage.UPDATE;
+    END;
+
+    LOCAL PROCEDURE ShortcutDimension1CodeOnAfterV@19029405();
+    BEGIN
+      CurrPage.PurchLines.PAGE.UpdateForm(TRUE);
+    END;
+
+    LOCAL PROCEDURE ShortcutDimension2CodeOnAfterV@19008725();
+    BEGIN
+      CurrPage.PurchLines.PAGE.UpdateForm(TRUE);
+    END;
+
+    LOCAL PROCEDURE PricesIncludingVATOnAfterValid@19009096();
+    BEGIN
+      CurrPage.UPDATE;
+    END;
+
+    LOCAL PROCEDURE SetDocNoVisible@2();
+    VAR
+      DocumentNoVisibility@1001 : Codeunit 1400;
+      DocType@1000 : 'Quote,Order,Invoice,Credit Memo,Blanket Order,Return Order,Reminder,FinChMemo';
+    BEGIN
+      DocNoVisible := DocumentNoVisibility.PurchaseDocumentNoIsVisible(DocType::"Return Order","No.");
+    END;
+
+    LOCAL PROCEDURE ZSetAdditionalDimValue@1000000002(VbooDrill@1000000001 : Boolean);
+    VAR
+      LcduDocFunct@1000000000 : Codeunit 81001;
+      LrecDimSetEntryTEMP@1000000002 : TEMPORARY Record 480;
+      VintOldDimSetID@1000000003 : Integer;
+    BEGIN
+      //ERROR('Developer Error:\CDU;81107 Funct:ZSetAdditionalDimValue not in use');
+      //P.Light01
+      CLEAR(GintAdditionalDims);
+      IF VbooDrill THEN BEGIN
+        VintOldDimSetID := "Dimension Set ID";
+
+        VALIDATE("Dimension Set ID",LcduDocFunct.EditDimensionSet("Dimension Set ID",'Additional Dimensions',0,"Procurement Workflow","Shortcut Dimension 1 Code","Shortcut Dimension 2 Code"));
+        IF VintOldDimSetID <> "Dimension Set ID" THEN BEGIN
+          MODIFY;
+          IF PurchLinesExist THEN Rec.TAUpdateAllLineDim("Dimension Set ID",VintOldDimSetID);
+        END;
+        //MESSAGE(format(LcduDocFunct.EditDimensionSet("Dimension Set ID",'Additional Dimensions',"Shortcut Dimension 1 Code","Shortcut Dimension 2 Code")));
+      END;
+
+      LcduDocFunct.LoadTempDimSet("Dimension Set ID",LrecDimSetEntryTEMP);
+      GintAdditionalDims := LcduDocFunct.CheckDims(0,"Procurement Workflow",LrecDimSetEntryTEMP);
+    END;
+
+    LOCAL PROCEDURE SetCaption@1000000001();
+    BEGIN
+      CLEAR(GtxtCaption);
+      GtxtCaption := STRSUBSTNO('%1: %2', FORMAT("Document Type"),"Unapproved No.");
+
+      IF "Error Text" <> '' THEN GtxtCaption := STRSUBSTNO('Error: %1',"Error Text");
+    END;
+
+    LOCAL PROCEDURE SetBTNState@1000000000();
+    VAR
+      LrecPSetup@1000000000 : Record 81000;
+      LrecDProcType@1000000001 : Record 81001;
+    BEGIN
+      LrecPSetup.FINDFIRST;
+      CLEAR(GbooEditable);
+      IF "Error Text" <> '' THEN BEGIN
+        GbooError := TRUE;
+      END;
+      IF LrecDProcType.GET("Procurement Workflow")THEN BEGIN
+        GbooShowGD1 := LrecDProcType."Show Dimension 1";
+        GbooShowGD2 := LrecDProcType."Show Dimension 2";
+        GbooShowExpDate := LrecDProcType."Due Date Required";
+      END;
+      CASE Status OF
+       Status::Open:
+         BEGIN
+          GbooDelete:= TRUE;
+          GbooApprovalSubmit := TRUE;
+          GbooEditable := TRUE;
+         END;
+       Status::Released:
+         BEGIN
+          GbooDelete := FALSE;
+          DocNoVisible := TRUE;
+          GbooPost := TRUE;
+          GbooApproved:= TRUE;
+          GbooSubmitted := TRUE;
+          GbooEditable := TRUE;
+         END;
+        Status::"Pending Approval":
+          BEGIN
+          GbooSubmitted := TRUE;
+          GbooApprovalCancel := TRUE;
+          GbooEditable := TRUE;
+          END;
+      END;
+    END;
+
+    LOCAL PROCEDURE VendorNoValidate@1000000003();
+    VAR
+      LcduDocFunct@1000000000 : Codeunit 81001;
+      LrecPsetup@1000000001 : Record 81000;
+    BEGIN
+      LcduDocFunct.SetDefaults(Rec);
+      LrecPsetup.FINDFIRST;
+      VALIDATE("Prices Including VAT",LrecPsetup."Prices Include VAT");
+      CurrPage.UPDATE;
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

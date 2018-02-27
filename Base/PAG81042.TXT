@@ -1,0 +1,87 @@
+OBJECT Page 81042 TA User Role
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=15:10:44;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table81013;
+    PageType=ListPart;
+    ActionList=ACTIONS
+    {
+      { 1000000006;  ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 1000000007;1 ;Action    ;
+                      Name=DocumentTypeSummary;
+                      CaptionML=[ENU=Document Type Summary;
+                                 ENG=Document Type Summary];
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=ViewPage;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 TotalApprovalUserRole@1000000000 : Record 81013;
+                                 DocumentType@1000000001 : Record 81001;
+                                 DocumentTypeTemp@1000000005 : TEMPORARY Record 81001;
+                                 RoleDocumentType@1000000004 : Record 81017;
+                               BEGIN
+                                 TotalApprovalUserRole.RESET;
+                                 DocumentTypeTemp.RESET;
+                                 DocumentTypeTemp.DELETEALL;
+                                 TotalApprovalUserRole.SETRANGE("TF User","TF User");
+                                 IF TotalApprovalUserRole.FINDSET(FALSE) THEN REPEAT
+                                   RoleDocumentType.RESET;
+                                   RoleDocumentType.SETRANGE(Role,TotalApprovalUserRole."Approval Role");
+                                   IF RoleDocumentType.FINDSET(FALSE) THEN REPEAT
+                                     DocumentType.RESET;
+                                     DocumentType.SETRANGE("Procurement Workflow",RoleDocumentType."Document Type");
+                                     IF DocumentType.FINDSET(FALSE) THEN REPEAT
+                                       DocumentTypeTemp.INIT;
+                                       DocumentTypeTemp := DocumentType;
+                                       IF DocumentTypeTemp.INSERT THEN;
+                                     UNTIL DocumentType.NEXT = 0;
+                                   UNTIL RoleDocumentType.NEXT = 0;
+                                 UNTIL TotalApprovalUserRole.NEXT = 0;
+                                 PAGE.RUNMODAL(PAGE::"Procurement Workflow List",DocumentTypeTemp);
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000005;2;Field  ;
+                CaptionML=ENU=Role;
+                SourceExpr="Approval Role" }
+
+    { 1000000002;2;Field  ;
+                SourceExpr=Dimension }
+
+    { 1000000003;2;Field  ;
+                SourceExpr="Dimension Value" }
+
+    { 1000000004;2;Field  ;
+                SourceExpr="Dimension Name" }
+
+    { 1000000008;2;Field  ;
+                SourceExpr="Business Wide" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

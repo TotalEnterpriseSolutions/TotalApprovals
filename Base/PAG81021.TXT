@@ -1,0 +1,93 @@
+OBJECT Page 81021 Catalogue Line Lookup List
+{
+  OBJECT-PROPERTIES
+  {
+    Date=21/09/17;
+    Time=19:48:05;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    LinksAllowed=No;
+    SourceTable=Table81003;
+    PageType=List;
+    ShowFilter=No;
+    OnAfterGetRecord=BEGIN
+                       IF "Header Line" THEN SetStyle := TRUE ELSE SetStyle := FALSE;
+                       IF "Header Line" THEN SetEnabled := FALSE ELSE SetEnabled := TRUE;
+                       SetHide := NOT("Hide Line");
+                     END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr=Index;
+                Visible=SetHide;
+                Enabled=SetEnabled;
+                Style=AttentionAccent;
+                StyleExpr=SetStyle }
+
+    { 1000000003;2;Field  ;
+                CaptionML=[ENU=Description;
+                           ENG=Description];
+                SourceExpr=Description;
+                Visible=SetHide;
+                Enabled=SetEnabled;
+                Style=AttentionAccent;
+                StyleExpr=SetStyle }
+
+    { 1000000004;2;Field  ;
+                SourceExpr=Type;
+                Visible=SetHide;
+                Enabled=SetEnabled;
+                Style=AttentionAccent;
+                StyleExpr=SetStyle }
+
+    { 1000000005;2;Field  ;
+                CaptionML=[ENU=G/L Acc. No.;
+                           ENG=G/L Acc. No.];
+                SourceExpr="No.";
+                Visible=SetHide;
+                Enabled=SetEnabled;
+                Style=AttentionAccent;
+                StyleExpr=SetStyle }
+
+    { 1000000006;2;Field  ;
+                SourceExpr=Price;
+                Visible=false;
+                Enabled=SetEnabled;
+                Style=AttentionAccent;
+                StyleExpr=SetStyle }
+
+    { 1000000007;2;Field  ;
+                SourceExpr="Default VAT";
+                Visible=false;
+                Enabled=SetEnabled;
+                Style=AttentionAccent;
+                StyleExpr=SetStyle }
+
+  }
+  CODE
+  {
+    VAR
+      SetStyle@1000000000 : Boolean;
+      SetEnabled@1000000001 : Boolean;
+      SetHide@1000000002 : Boolean INDATASET;
+
+    BEGIN
+    END.
+  }
+}
+

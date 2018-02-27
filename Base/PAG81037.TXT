@@ -1,0 +1,200 @@
+OBJECT Page 81037 TA Account Manager Act
+{
+  OBJECT-PROPERTIES
+  {
+    Date=18/09/17;
+    Time=10:06:45;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table9055;
+    PageType=CardPart;
+    OnOpenPage=VAR
+                 TotalApprovalSetup@1000000000 : Record 81000;
+               BEGIN
+                 SETFILTER("User ID Filter",USERID);
+
+                 TotalApprovalSetup.GET;
+                 IF TotalApprovalSetup."Admin Mode" THEN AdminActive := TRUE ELSE AdminActive :=  FALSE;
+               END;
+
+  }
+  CONTROLS
+  {
+    { 1000000000;;Container;
+                CaptionML=[ENU=Total Financials;
+                           ENG=Total Financials];
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                CaptionML=[ENU=My Documents;
+                           ENG=My Documents];
+                GroupType=CueGroup;
+                ActionList=ACTIONS
+                {
+                  { 1000000003;  ;Action    ;
+                                  Name=Approved Orders;
+                                  CaptionML=[ENU=My Approved POs;
+                                             CYM=My Approved POs;
+                                             ENG=My Approved POs];
+                                  OnAction=VAR
+                                             DocumentFunctions@1000000000 : Codeunit 81001;
+                                             PurchaseHeader@1000000001 : Record 38;
+                                           BEGIN
+                                             PurchaseHeader.RESET;
+                                             FILTERGROUP(0);
+                                             PurchaseHeader.SETRANGE("Document Type",PurchaseHeader."Document Type"::Order);
+                                             PurchaseHeader.SETRANGE(Originator,USERID);
+                                             PurchaseHeader.SETRANGE(Deleted,FALSE);
+                                             FILTERGROUP(2);
+                                             PAGE.RUN(PAGE::"TA Purchase Order List",PurchaseHeader);
+                                           END;
+                                            }
+                  { 1000000013;  ;Action    ;
+                                  Name=New Purchase Document;
+                                  CaptionML=[ENU=New Purchase Order;
+                                             CYM=Archeb Prynu Newydd;
+                                             ENG=New Purchase Order];
+                                  ToolTipML=[ENU=Click to Create a New Purchase Order;
+                                             CYM=Cliciwch i Greu Gorchymyn Prynu Newydd;
+                                             ENG=Click to Create a New Purchase Order];
+                                  Image=TileNew;
+                                  RunPageMode=Create;
+                                  OnAction=VAR
+                                             DocumentFunctions@1000000000 : Codeunit 81001;
+                                             PurchaseHeader@1000000001 : Record 38;
+                                           BEGIN
+                                             DocumentFunctions.CreateDocument(PurchaseHeader."Document Type"::Order);
+                                           END;
+                                            }
+                  { 1000000012;  ;Action    ;
+                                  Name=Reports;
+                                  OnAction=BEGIN
+                                             //HYPERLINK('http://TAF-Finance/Reports_FINANCE/Pages/Report.aspx?ItemPath=%2fReporting+Template%2fFinance+-+Interactive+P+and+L');
+                                           END;
+                                            }
+                }
+                 }
+
+    { 1000000005;2;Field  ;
+                CaptionML=[ENU=Open;
+                           CYM=Agor;
+                           ENG=Open];
+                SourceExpr=Open;
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000004;2;Field  ;
+                CaptionML=[ENU=Pending Approval;
+                           CYM=Cymeradwyaethau yn yr Arfaeth;
+                           ENG=Pending Approval];
+                SourceExpr="Pending Approval";
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000006;1;Group  ;
+                CaptionML=[ENU=Approval Requests;
+                           ENG=Approval Requests];
+                GroupType=CueGroup }
+
+    { 1000000007;2;Field  ;
+                CaptionML=[ENU=Requests to Approve;
+                           CYM=Cais am Gymeradwyaeth;
+                           ENG=Requests to Approve];
+                SourceExpr="Requests to Approve";
+                DrillDownPageID=TA Admin Approval Entries;
+                StyleExpr=TRUE }
+
+    { 1000000002;1;Group  ;
+                CaptionML=[ENU=Overview;
+                           ENG=Overview];
+                GroupType=CueGroup;
+                ActionList=ACTIONS
+                {
+                  { 1000000009;  ;Action    ;
+                                  CaptionML=ENU=Admin Approvals;
+                                  OnAction=VAR
+                                             TotalApprovalSetup@1000000004 : Record 81000;
+                                             User@1000000003 : Record 2000000120;
+                                             TAAdminApprovalEntries@1000000002 : Page 81022;
+                                             ApprovalEntry@1000000001 : Record 454;
+                                             UserLookup@1000000000 : Page 9843;
+                                           BEGIN
+                                             TotalApprovalSetup.GET;
+
+                                             IF TotalApprovalSetup."Admin Mode" THEN BEGIN
+                                               User.RESET;
+                                               CLEAR(UserLookup);
+                                               UserLookup.SETTABLEVIEW(User);
+                                               UserLookup.SETRECORD(User);
+                                               UserLookup.LOOKUPMODE(TRUE);
+                                               IF UserLookup.RUNMODAL = ACTION::LookupOK THEN BEGIN
+                                                 UserLookup.GETRECORD(User);
+                                               END;
+                                             END;
+
+                                             ApprovalEntry.RESET;
+                                             ApprovalEntry.SETRANGE("Approver ID",User."User Name");
+                                             ApprovalEntry.SETRANGE(Status,ApprovalEntry.Status::Open);
+                                             PAGE.RUN(PAGE::"TA Admin Approval Entries",ApprovalEntry);
+                                           END;
+                                            }
+                }
+                 }
+
+    { 1000000018;2;Field  ;
+                Name=FO Open;
+                CaptionML=[ENU=Open;
+                           CYM=Agored;
+                           ENG=Open];
+                SourceExpr="Open Overview";
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000017;2;Field  ;
+                Name=FO Pending;
+                CaptionML=[ENU=Pending;
+                           CYM=Tra'n aros Cymeradwyo;
+                           ENG=Pending Approval];
+                SourceExpr="Pending Approval Overview";
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000016;2;Field  ;
+                CaptionML=[ENU=Pending Receipt;
+                           CYM=Derbynneb Prynu;
+                           ENG=Purchase Receipt];
+                SourceExpr="Pending Receipt";
+                Visible=false;
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000015;2;Field  ;
+                CaptionML=[ENU=Approved;
+                           CYM=Archebion Cymeradwy;
+                           ENG=Approved];
+                SourceExpr="Approved Overview";
+                LookupPageID=TA Purchase Order List;
+                DrillDownPageID=TA Purchase Order List }
+
+    { 1000000011;2;Field  ;
+                CaptionML=[ENU=Approval Entries;
+                           CYM=Entries Cymeradwyo;
+                           ENG=Approval Entries];
+                SourceExpr="Approval Entries";
+                DrillDownPageID=TA Admin Approval Entries }
+
+  }
+  CODE
+  {
+    VAR
+      AdminCount@1000000000 : Integer;
+      AdminActive@1000000001 : Boolean;
+
+    BEGIN
+    END.
+  }
+}
+

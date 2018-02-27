@@ -1,0 +1,73 @@
+OBJECT Page 81039 TA Account Manager Setup
+{
+  OBJECT-PROPERTIES
+  {
+    Date=10/10/17;
+    Time=14:16:10;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table9055;
+    PageType=CardPart;
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                CaptionML=ENU=Actions;
+                GroupType=CueGroup;
+                ActionList=ACTIONS
+                {
+                  { 1000000010;  ;Action    ;
+                                  Name=Setup;
+                                  CaptionML=ENU=Setup;
+                                  RunObject=Page 81040 }
+                  { 1000000009;  ;Action    ;
+                                  Name=Users;
+                                  RunObject=Page 9800 }
+                  { 1000000008;  ;Action    ;
+                                  Name=Roles;
+                                  RunObject=Page 81041 }
+                  { 1000000007;  ;Action    ;
+                                  Name=User Role Assignment;
+                                  CaptionML=ENU=User Approval Roles;
+                                  RunObject=Page 81043 }
+                  { 1000000013;  ;Action    ;
+                                  Name=Catalogues;
+                                  RunObject=Page 81005 }
+                  { 1000000005;  ;Action    ;
+                                  Name=Procurement Workflows;
+                                  RunObject=Page 81031 }
+                  { 1000000012;  ;Action    ;
+                                  Name=User Procurement Workflows;
+                                  RunObject=Page 81064 }
+                  { 1000000004;  ;Action    ;
+                                  Name=Commercial Approval Templates;
+                                  CaptionML=ENU=Commercial Approval Template;
+                                  RunObject=Page 81049 }
+                  { 1000000003;  ;Action    ;
+                                  Name=Dimension Templates;
+                                  RunObject=Page 81053 }
+                  { 1000000002;  ;Action    ;
+                                  Name=Deleted Orders;
+                                  RunObject=Page 9307;
+                                  RunPageView=WHERE(Deleted=CONST(Yes)) }
+                  { 1000000011;  ;Action    ;
+                                  Name=Total Communications Records;
+                                  RunObject=Page 91001 }
+                }
+                 }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,51 @@
+OBJECT Page 81038 TA Account Manager
+{
+  OBJECT-PROPERTIES
+  {
+    Date=01/09/17;
+    Time=11:32:35;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    PageType=RoleCenter;
+  }
+  CONTROLS
+  {
+    { 1000000000;;Container;
+                CaptionML=[ENU=Approval Overview;
+                           ENG=Approval Overview];
+                ContainerType=RoleCenterArea }
+
+    { 1000000002;1;Group  ;
+                GroupType=Group }
+
+    { 1000000001;2;Part   ;
+                CaptionML=[ENU=Total Approvals Overview;
+                           ENG=Total Approvals Overview];
+                PagePartID=Page81037;
+                PartType=Page }
+
+    { 1000000003;1;Group  ;
+                GroupType=Group }
+
+    { 1000000004;2;Part   ;
+                CaptionML=[ENU=Total Approval Setup;
+                           ENG=Total Approval Setup];
+                PagePartID=Page81039;
+                PartType=Page }
+
+    { 1000000006;2;Part   ;
+                PagePartID=Page9030;
+                PartType=Page }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

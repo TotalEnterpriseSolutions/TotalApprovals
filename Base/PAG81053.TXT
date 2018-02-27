@@ -1,0 +1,43 @@
+OBJECT Page 81053 Dimension Templates
+{
+  OBJECT-PROPERTIES
+  {
+    Date=31/08/17;
+    Time=14:21:59;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    SourceTable=Table81019;
+    PageType=List;
+    CardPageID=Dimension Template;
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr=Code }
+
+    { 1000000003;2;Field  ;
+                SourceExpr=Description }
+
+    { 1000000004;2;Field  ;
+                SourceExpr="Dimension Count" }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

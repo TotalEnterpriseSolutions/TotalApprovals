@@ -1,0 +1,49 @@
+OBJECT Page 81045 TA User Dim Assignment
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=16:15:30;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table81015;
+    PageType=ListPart;
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                SourceExpr="Dimension Code" }
+
+    { 1000000003;2;Field  ;
+                SourceExpr="Dimension Value Code" }
+
+    { 1000000004;2;Field  ;
+                SourceExpr="Dimension Value Description" }
+
+    { 1000000005;2;Field  ;
+                SourceExpr="Assigning Template" }
+
+    { 1000000006;2;Field  ;
+                SourceExpr="Default Dimension";
+                Style=Strong;
+                StyleExpr=TRUE }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

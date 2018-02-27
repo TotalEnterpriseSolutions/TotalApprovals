@@ -1,0 +1,584 @@
+OBJECT Page 9308 Purchase Invoices
+{
+  OBJECT-PROPERTIES
+  {
+    Date=19/09/17;
+    Time=13:37:40;
+    Modified=Yes;
+    Version List=NAVW110.00.00.16585,TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    CaptionML=[ENU=Purchase Invoices;
+               ENG=Purchase Invoices];
+    SourceTable=Table38;
+    SourceTableView=WHERE(Document Type=CONST(Invoice));
+    DataCaptionFields=Buy-from Vendor No.;
+    PageType=List;
+    CardPageID=Purchase Invoice;
+    RefreshOnActivate=Yes;
+    PromotedActionCategoriesML=[ENU=New,Process,Report,Invoice,Posting,Request Approval;
+                                ENG=New,Process,Report,Invoice,Posting,Request Approval];
+    OnOpenPage=VAR
+                 PurchasesPayablesSetup@1000 : Record 312;
+               BEGIN
+                 SetSecurityFilterOnRespCenter;
+
+                 JobQueueActive := PurchasesPayablesSetup.JobQueueActive;
+
+                 CopyBuyFromVendorFilter;
+               END;
+
+    OnAfterGetCurrRecord=BEGIN
+                           SetControlAppearance;
+                           CurrPage.IncomingDocAttachFactBox.PAGE.LoadDataFromRecord(Rec);
+                         END;
+
+    ActionList=ACTIONS
+    {
+      { 1900000003;0 ;ActionContainer;
+                      ActionContainerType=RelatedInformation }
+      { 1102601017;1 ;ActionGroup;
+                      CaptionML=[ENU=&Invoice;
+                                 ENG=&Invoice];
+                      Image=Invoice }
+      { 1102601019;2 ;Action    ;
+                      Name=Statistics;
+                      ShortCutKey=F7;
+                      CaptionML=[ENU=Statistics;
+                                 ENG=Statistics];
+                      Promoted=Yes;
+                      Image=Statistics;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 CalcInvDiscForHeader;
+                                 COMMIT;
+                                 PAGE.RUNMODAL(PAGE::"Purchase Statistics",Rec);
+                               END;
+                                }
+      { 1102601021;2 ;Action    ;
+                      CaptionML=[ENU=Co&mments;
+                                 ENG=Co&mments];
+                      RunObject=Page 66;
+                      RunPageLink=Document Type=FIELD(Document Type),
+                                  No.=FIELD(No.),
+                                  Document Line No.=CONST(0);
+                      Image=ViewComments }
+      { 1102601022;2 ;Action    ;
+                      Name=Dimensions;
+                      AccessByPermission=TableData 348=R;
+                      ShortCutKey=Shift+Ctrl+D;
+                      CaptionML=[ENU=Dimensions;
+                                 ENG=Dimensions];
+                      ToolTipML=[ENU=View or edit dimensions, such as area, project, or department, that you can assign to sales and purchase documents to distribute costs and analyze transaction history.;
+                                 ENG=View or edit dimensions, such as area, project, or department, that you can assign to sales and purchase documents to distribute costs and analyse transaction history.];
+                      Image=Dimensions;
+                      OnAction=BEGIN
+                                 ShowDocDim;
+                               END;
+                                }
+      { 1900000004;0 ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 20      ;1   ;ActionGroup;
+                      CaptionML=[ENU=Invoice;
+                                 ENG=Invoice] }
+      { 22      ;2   ;Action    ;
+                      Name=Vendor;
+                      ShortCutKey=Shift+F7;
+                      CaptionML=[ENU=Vendor;
+                                 ENG=Vendor];
+                      ToolTipML=[ENU=View or edit detailed information about the vendor on the selected purchase document.;
+                                 ENG=View or edit detailed information about the vendor on the selected purchase document.];
+                      ApplicationArea=#Basic,#Suite;
+                      RunObject=Page 26;
+                      RunPageLink=No.=FIELD(Buy-from Vendor No.);
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=Vendor;
+                      PromotedCategory=Category4;
+                      PromotedOnly=Yes;
+                      Scope=Repeater }
+      { 7       ;1   ;ActionGroup;
+                      CaptionML=[ENU=Release;
+                                 ENG=Release];
+                      Image=ReleaseDoc }
+      { 1102601015;2 ;Action    ;
+                      Name=Release;
+                      ShortCutKey=Ctrl+F9;
+                      CaptionML=[ENU=Re&lease;
+                                 ENG=Re&lease];
+                      Image=ReleaseDoc;
+                      OnAction=VAR
+                                 ReleasePurchDoc@1000 : Codeunit 415;
+                               BEGIN
+                                 ReleasePurchDoc.PerformManualRelease(Rec);
+                               END;
+                                }
+      { 1102601016;2 ;Action    ;
+                      Name=Reopen;
+                      CaptionML=[ENU=Re&open;
+                                 ENG=Re&open];
+                      Image=ReOpen;
+                      OnAction=VAR
+                                 ReleasePurchDoc@1001 : Codeunit 415;
+                               BEGIN
+                                 ReleasePurchDoc.PerformManualReopen(Rec);
+                               END;
+                                }
+      { 1102601000;1 ;ActionGroup;
+                      CaptionML=[ENU=Request Approval;
+                                 ENG=Request Approval];
+                      Image=Action }
+      { 1000000002;2 ;Action    ;
+                      Name=Approvals;
+                      AccessByPermission=TableData 454=R;
+                      CaptionML=[ENU=Approvals;
+                                 ENG=Approvals];
+                      ToolTipML=[ENU=View a list of the records that are waiting to be approved. For example, you can see who requested the record to be approved, when it was sent, and when it is due to be approved.;
+                                 ENG=View a list of the records that are waiting to be approved. For example, you can see who requested the record to be approved, when it was sent, and when it is due to be approved.];
+                      ApplicationArea=#Suite;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=Approvals;
+                      PromotedCategory=Category8;
+                      PromotedOnly=Yes;
+                      OnAction=VAR
+                                 ApprovalEntries@1001 : Page 81029;
+                               BEGIN
+                                 ApprovalEntries.Setfilters(DATABASE::"Purchase Header","Document Type","No.");
+                                 ApprovalEntries.RUN;
+                               END;
+                                }
+      { 1000000001;2 ;Action    ;
+                      Name=SendApprovalRequest;
+                      CaptionML=[ENU=Send A&pproval Request;
+                                 ENG=Send A&pproval Request];
+                      ToolTipML=[ENU=Send an approval request.;
+                                 ENG=Send an approval request.];
+                      ApplicationArea=#Suite;
+                      Promoted=Yes;
+                      Enabled=NOT OpenApprovalEntriesExist;
+                      PromotedIsBig=Yes;
+                      Image=SendApprovalRequest;
+                      PromotedCategory=Category8;
+                      PromotedOnly=Yes;
+                      OnAction=VAR
+                                 TotalApprovalFunctions@1000000000 : Codeunit 81000;
+                                 ErrorText@1000000001 : Text;
+                               BEGIN
+                                 IF NOT TotalApprovalFunctions.SubmitForApproval("Document Type","No.",ErrorText) THEN ERROR(ErrorText);
+
+                                 TotalApprovalFunctions.ApprovalMessage(38,"No.");
+                                 CurrPage.CLOSE;
+                               END;
+                                }
+      { 1000000000;2 ;Action    ;
+                      Name=CancelApprovalRequest;
+                      CaptionML=[ENU=Cancel Approval Re&quest;
+                                 ENG=Cancel Approval Re&quest];
+                      ToolTipML=[ENU=Cancel the approval request.;
+                                 ENG=Cancel the approval request.];
+                      ApplicationArea=#Suite;
+                      Promoted=Yes;
+                      Enabled=CanCancelApprovalForRecord;
+                      PromotedIsBig=Yes;
+                      Image=CancelApprovalRequest;
+                      PromotedCategory=Category8;
+                      PromotedOnly=Yes;
+                      OnAction=VAR
+                                 TotalApprovalFunctions@1000 : Codeunit 81000;
+                               BEGIN
+                                 IF TotalApprovalFunctions.CancelDocument(Rec,TRUE) THEN CurrPage.CLOSE;
+                               END;
+                                }
+      { 50      ;1   ;ActionGroup;
+                      CaptionML=[ENU=P&osting;
+                                 ENG=P&osting];
+                      Image=Post }
+      { 52      ;2   ;Action    ;
+                      Name=Post;
+                      ShortCutKey=F9;
+                      CaptionML=[ENU=P&ost;
+                                 ENG=P&ost];
+                      ToolTipML=[ENU=Finalize the document or journal by posting the amounts and quantities to the related accounts in your company books.;
+                                 ENG=Finalise the document or journal by posting the amounts and quantities to the related accounts in your company books.];
+                      ApplicationArea=#Basic,#Suite;
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=PostOrder;
+                      PromotedCategory=Process;
+                      PromotedOnly=Yes;
+                      OnAction=BEGIN
+                                 VerifyTotal;
+                                 Post(CODEUNIT::"Purch.-Post (Yes/No)");
+                               END;
+                                }
+      { 9       ;2   ;Action    ;
+                      Name=Preview;
+                      CaptionML=[ENU=Preview Posting;
+                                 ENG=Preview Posting];
+                      ToolTipML=[ENU=Review the different types of entries that will be created when you post the document or journal.;
+                                 ENG=Review the different types of entries that will be created when you post the document or journal.];
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=ViewPostedOrder;
+                      PromotedCategory=Process;
+                      PromotedOnly=Yes;
+                      OnAction=VAR
+                                 PurchPostYesNo@1000 : Codeunit 91;
+                               BEGIN
+                                 PurchPostYesNo.Preview(Rec);
+                               END;
+                                }
+      { 51      ;2   ;Action    ;
+                      Name=TestReport;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Test Report;
+                                 ENG=Test Report];
+                      ToolTipML=[ENU=View a test report so that you can find and correct any errors before you perform the actual posting of the journal or document.;
+                                 ENG=View a test report so that you can find and correct any errors before you perform the actual posting of the journal or document.];
+                      Image=TestReport;
+                      OnAction=BEGIN
+                                 ReportPrint.PrintPurchHeader(Rec);
+                               END;
+                                }
+      { 53      ;2   ;Action    ;
+                      Name=PostAndPrint;
+                      ShortCutKey=Shift+F9;
+                      CaptionML=[ENU=Post and &Print;
+                                 ENG=Post and &Print];
+                      Promoted=Yes;
+                      PromotedIsBig=Yes;
+                      Image=PostPrint;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 VerifyTotal;
+                                 SendToPosting(CODEUNIT::"Purch.-Post + Print");
+                               END;
+                                }
+      { 54      ;2   ;Action    ;
+                      Name=PostBatch;
+                      Ellipsis=Yes;
+                      CaptionML=[ENU=Post &Batch;
+                                 ENG=Post &Batch];
+                      Promoted=Yes;
+                      Image=PostBatch;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 VerifyTotal;
+                                 REPORT.RUNMODAL(REPORT::"Batch Post Purchase Invoices",TRUE,TRUE,Rec);
+                                 CurrPage.UPDATE(FALSE);
+                               END;
+                                }
+      { 3       ;2   ;Action    ;
+                      Name=RemoveFromJobQueue;
+                      CaptionML=[ENU=Remove From Job Queue;
+                                 ENG=Remove From Job Queue];
+                      ToolTipML=[ENU=Remove the scheduled processing of this record from the job queue.;
+                                 ENG=Remove the scheduled processing of this record from the job queue.];
+                      ApplicationArea=#All;
+                      Visible=JobQueueActive;
+                      Image=RemoveLine;
+                      OnAction=BEGIN
+                                 CancelBackgroundPosting;
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1   ;1   ;Group     ;
+                GroupType=Repeater }
+
+    { 2   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the number of the purchase document. The field is only visible if you have not set up a number series for the type of purchase document, or if the Manual Nos. field is selected for the number series.;
+                           ENG=Specifies the number of the purchase document. The field is only visible if you have not set up a number series for the type of purchase document, or if the Manual Nos. field is selected for the number series.];
+                ApplicationArea=#All;
+                SourceExpr="No." }
+
+    { 4   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the number of the vendor that you buy from. When you enter the number, several other fields on the document are filled from the vendor card. You can change the vendor number as long as you have not posted the document.;
+                           ENG=Specifies the number of the vendor that you buy from. When you enter the number, several other fields on the document are filled from the vendor card. You can change the vendor number as long as you have not posted the document.];
+                ApplicationArea=#All;
+                SourceExpr="Buy-from Vendor No." }
+
+    { 13  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the order address code linked to the relevant vendor's order address.;
+                           ENG=Specifies the order address code linked to the relevant vendor's order address.];
+                SourceExpr="Order Address Code";
+                Visible=FALSE }
+
+    { 6   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the name of the vendor who delivers the items.;
+                           ENG=Specifies the name of the vendor who delivers the items.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr="Buy-from Vendor Name" }
+
+    { 15  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the compensation agreement identification number, sometimes referred to as the RMA No. (Returns Materials Authorization).;
+                           ENG=Specifies the compensation agreement identification number, sometimes referred to as the RMA No. (Returns Materials Authorisation).];
+                SourceExpr="Vendor Authorization No.";
+                Visible=FALSE }
+
+    { 27  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the postal code of the address.;
+                           ENG=Specifies the postcode of the address.];
+                SourceExpr="Buy-from Post Code";
+                Visible=FALSE }
+
+    { 23  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the country/region code of the address.;
+                           ENG=Specifies the country/region code of the address.];
+                SourceExpr="Buy-from Country/Region Code";
+                Visible=FALSE }
+
+    { 35  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the name of the person to contact about shipment of the item from this vendor.;
+                           ENG=Specifies the name of the person to contact about shipment of the item from this vendor.];
+                SourceExpr="Buy-from Contact";
+                Visible=FALSE }
+
+    { 163 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the vendor who is sending the invoice.;
+                           ENG=Specifies the vendor who is sending the invoice.];
+                SourceExpr="Pay-to Vendor No.";
+                Visible=FALSE }
+
+    { 161 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the name of the vendor sending the invoice.;
+                           ENG=Specifies the name of the vendor sending the invoice.];
+                SourceExpr="Pay-to Name";
+                Visible=FALSE }
+
+    { 33  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the postal code of the address.;
+                           ENG=Specifies the postcode of the address.];
+                SourceExpr="Pay-to Post Code";
+                Visible=FALSE }
+
+    { 29  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the country/region code of the address.;
+                           ENG=Specifies the country/region code of the address.];
+                SourceExpr="Pay-to Country/Region Code";
+                Visible=FALSE }
+
+    { 151 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the name of the person to contact about an invoice from this vendor.;
+                           ENG=Specifies the name of the person to contact about an invoice from this vendor.];
+                SourceExpr="Pay-to Contact";
+                Visible=FALSE }
+
+    { 147 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies a ship-to code if you want a different shipment address from the one that has been automatically entered.;
+                           ENG=Specifies a ship-to code if you want a different shipment address from the one that has been automatically entered.];
+                SourceExpr="Ship-to Code";
+                Visible=FALSE }
+
+    { 145 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the name of the company at the address to which you want the items to be shipped.;
+                           ENG=Specifies the name of the company at the address to which you want the items to be shipped.];
+                SourceExpr="Ship-to Name";
+                Visible=FALSE }
+
+    { 21  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the postal code of the address.;
+                           ENG=Specifies the postcode of the address.];
+                SourceExpr="Ship-to Post Code";
+                Visible=FALSE }
+
+    { 17  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the country/region code of the address.;
+                           ENG=Specifies the country/region code of the address.];
+                SourceExpr="Ship-to Country/Region Code";
+                Visible=FALSE }
+
+    { 135 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the name of a contact person for the address where the items should be shipped.;
+                           ENG=Specifies the name of a contact person for the address where the items should be shipped.];
+                SourceExpr="Ship-to Contact";
+                Visible=FALSE }
+
+    { 131 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the date when the posting of the purchase document will be recorded.;
+                           ENG=Specifies the date when the posting of the purchase document will be recorded.];
+                SourceExpr="Posting Date";
+                Visible=FALSE }
+
+    { 113 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the dimension value code associated with the purchase header.;
+                           ENG=Specifies the dimension value code associated with the purchase header.];
+                SourceExpr="Shortcut Dimension 1 Code";
+                Visible=FALSE }
+
+    { 111 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the dimension value code associated with the purchase header.;
+                           ENG=Specifies the dimension value code associated with the purchase header.];
+                SourceExpr="Shortcut Dimension 2 Code";
+                Visible=FALSE }
+
+    { 115 ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies a code for the location where you want the items to be placed when they are received.;
+                           ENG=Specifies a code for the location where you want the items to be placed when they are received.];
+                SourceExpr="Location Code" }
+
+    { 99  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies which purchaser is assigned to the vendor.;
+                           ENG=Specifies which purchaser is assigned to the vendor.];
+                SourceExpr="Purchaser Code";
+                Visible=FALSE }
+
+    { 31  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the ID of the user who is responsible for the document.;
+                           ENG=Specifies the ID of the user who is responsible for the document.];
+                SourceExpr="Assigned User ID" }
+
+    { 11  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the code of the currency of the amounts on the purchase lines.;
+                           ENG=Specifies the code of the currency of the amounts on the purchase lines.];
+                SourceExpr="Currency Code";
+                Visible=FALSE }
+
+    { 1102601001;2;Field  ;
+                ToolTipML=[ENU=Specifies the date of the vendor's invoice.;
+                           ENG=Specifies the date of the vendor's invoice.];
+                SourceExpr="Document Date";
+                Visible=FALSE }
+
+    { 1102601003;2;Field  ;
+                ToolTipML=[ENU=Specifies whether the record is open, waiting to be approved, invoiced for prepayment, or released to the next stage of processing.;
+                           ENG=Specifies whether the record is open, waiting to be approved, invoiced for prepayment, or released to the next stage of processing.];
+                SourceExpr=Status;
+                Visible=FALSE }
+
+    { 1102601005;2;Field  ;
+                ToolTipML=[ENU=Specifies a formula that calculates the payment due date, payment discount date, and payment discount amount on the purchase document.;
+                           ENG=Specifies a formula that calculates the payment due date, payment discount date, and payment discount amount on the purchase document.];
+                SourceExpr="Payment Terms Code";
+                Visible=FALSE }
+
+    { 1102601007;2;Field  ;
+                ToolTipML=[ENU=Specifies when the invoice is due.;
+                           ENG=Specifies when the invoice is due.];
+                SourceExpr="Due Date";
+                Visible=FALSE }
+
+    { 1102601009;2;Field  ;
+                ToolTipML=[ENU=Specifies the payment discount percent granted if payment is made on or before the date in the Pmt. Discount Date field.;
+                           ENG=Specifies the payment discount percent granted if payment is made on or before the date in the Pmt. Discount Date field.];
+                SourceExpr="Payment Discount %";
+                Visible=FALSE }
+
+    { 1102601011;2;Field  ;
+                ToolTipML=[ENU=Specifies how payment for the purchase document must be submitted.;
+                           ENG=Specifies how payment for the purchase document must be submitted.];
+                SourceExpr="Payment Method Code";
+                Visible=FALSE }
+
+    { 1102601020;2;Field  ;
+                ToolTipML=[ENU=Specifies the code that represents the shipment method for this purchase.;
+                           ENG=Specifies the code that represents the shipment method for this purchase.];
+                SourceExpr="Shipment Method Code";
+                Visible=FALSE }
+
+    { 1102601025;2;Field  ;
+                ToolTipML=[ENU=Specifies the date to have the vendor deliver your order to the ship-to address.;
+                           ENG=Specifies the date to have the vendor deliver your order to the ship-to address.];
+                SourceExpr="Requested Receipt Date";
+                Visible=FALSE }
+
+    { 5   ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the status of a job queue entry that handles the posting of purchase orders.;
+                           ENG=Specifies the status of a job queue entry that handles the posting of purchase orders.];
+                ApplicationArea=#All;
+                SourceExpr="Job Queue Status";
+                Visible=JobQueueActive }
+
+    { 16  ;2   ;Field     ;
+                ToolTipML=[ENU=Specifies the sum of the amounts in the Amount field on the associated purchase lines.;
+                           ENG=Specifies the sum of the amounts in the Amount field on the associated purchase lines.];
+                ApplicationArea=#Basic,#Suite;
+                SourceExpr=Amount }
+
+    { 1900000007;0;Container;
+                ContainerType=FactBoxArea }
+
+    { 8   ;1   ;Part      ;
+                Name=IncomingDocAttachFactBox;
+                PagePartID=Page193;
+                PartType=Page;
+                ShowFilter=No }
+
+    { 1901138007;1;Part   ;
+                SubPageLink=No.=FIELD(Buy-from Vendor No.),
+                            Date Filter=FIELD(Date Filter);
+                PagePartID=Page9093;
+                PartType=Page }
+
+    { 1900383207;1;Part   ;
+                Visible=FALSE;
+                PartType=System;
+                SystemPartID=RecordLinks }
+
+    { 1905767507;1;Part   ;
+                PartType=System;
+                SystemPartID=Notes }
+
+  }
+  CODE
+  {
+    VAR
+      ReportPrint@1102601000 : Codeunit 228;
+      JobQueueActive@1001 : Boolean INDATASET;
+      OpenApprovalEntriesExist@1002 : Boolean;
+      OpenPostedPurchaseInvQst@1005 : TextConst 'ENU=The invoice has been posted and moved to the Posted Purchase Invoice list.\\Do you want to open the posted invoice?;ENG=The invoice has been posted and moved to the Posted Purchase Invoice list.\\Do you want to open the posted invoice?';
+      CanCancelApprovalForRecord@1003 : Boolean;
+      TotalsMismatchErr@1000 : TextConst 'ENU=The invoice cannot be posted because the total is different from the total on the related incoming document.;ENG=The invoice cannot be posted because the total is different from the total on the related incoming document.';
+
+    LOCAL PROCEDURE SetControlAppearance@5();
+    VAR
+      ApprovalsMgmt@1000 : Codeunit 1535;
+    BEGIN
+      OpenApprovalEntriesExist := ApprovalsMgmt.HasOpenApprovalEntries(RECORDID);
+
+      CanCancelApprovalForRecord := ApprovalsMgmt.CanCancelApprovalForRecord(RECORDID);
+    END;
+
+    LOCAL PROCEDURE Post@4(PostingCodeunitID@1000 : Integer);
+    VAR
+      ApplicationAreaSetup@1002 : Record 9178;
+      LinesInstructionMgt@1001 : Codeunit 1320;
+    BEGIN
+      IF ApplicationAreaSetup.IsFoundationEnabled THEN
+        LinesInstructionMgt.PurchaseCheckAllLinesHaveQuantityAssigned(Rec);
+
+      SendToPosting(PostingCodeunitID);
+
+      IF ApplicationAreaSetup.IsFoundationEnabled THEN
+        ShowPostedConfirmationMessage;
+    END;
+
+    LOCAL PROCEDURE ShowPostedConfirmationMessage@7();
+    VAR
+      PurchInvHeader@1000 : Record 122;
+    BEGIN
+      PurchInvHeader.SETFILTER("Pre-Assigned No.","No.");
+      IF PurchInvHeader.FINDFIRST THEN
+        IF DIALOG.CONFIRM(OpenPostedPurchaseInvQst,FALSE) THEN
+          PAGE.RUN(PAGE::"Posted Purchase Invoice",PurchInvHeader);
+    END;
+
+    LOCAL PROCEDURE VerifyTotal@1();
+    BEGIN
+      IF NOT IsTotalValid THEN
+        ERROR(TotalsMismatchErr);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

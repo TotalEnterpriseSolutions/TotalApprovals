@@ -1,0 +1,46 @@
+OBJECT Page 81005 Catalogue List
+{
+  OBJECT-PROPERTIES
+  {
+    Date=30/08/17;
+    Time=11:35:46;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    Editable=No;
+    InsertAllowed=No;
+    DeleteAllowed=No;
+    ModifyAllowed=No;
+    LinksAllowed=No;
+    SourceTable=Table81002;
+    PageType=List;
+    CardPageID=Catalogue Card;
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=Group;
+                GroupType=Repeater }
+
+    { 1000000002;2;Field  ;
+                CaptionML=CYM=Cod;
+                SourceExpr=Code }
+
+    { 1000000003;2;Field  ;
+                CaptionML=CYM=Disgrifiad;
+                SourceExpr=Description }
+
+  }
+  CODE
+  {
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,50 @@
+OBJECT Page 10500 Types of Supply
+{
+  OBJECT-PROPERTIES
+  {
+    Date=05/10/17;
+    Time=14:33:36;
+    Modified=Yes;
+    Version List=NAVGB10.00,TA1.0;
+  }
+  PROPERTIES
+  {
+    CaptionML=[ENU=Types of Supply;
+               ENG=Types of Supply];
+    SourceTable=Table10500;
+    PageType=List;
+  }
+  CONTROLS
+  {
+    { 1900000001;0;Container;
+                ContainerType=ContentArea }
+
+    { 1040000;1;Group     ;
+                GroupType=Repeater }
+
+    { 1040004;2;Field     ;
+                ToolTipML=[ENU=Specifies a code for the type of supply.;
+                           ENG=Specifies a code for the type of supply.];
+                ApplicationArea=#All;
+                SourceExpr=Code }
+
+    { 1040006;2;Field     ;
+                ToolTipML=[ENU=Specifies a code for the type of supply.;
+                           ENG=Specifies a code for the type of supply.];
+                ApplicationArea=#All;
+                SourceExpr=Description }
+
+  }
+  CODE
+  {
+
+    PROCEDURE ReturnChosenRecords@1000000000(VAR TypeofSupply@1000000000 : Record 10500);
+    BEGIN
+      CurrPage.SETSELECTIONFILTER(TypeofSupply);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+

@@ -1,0 +1,125 @@
+OBJECT Page 81054 Dimension Template
+{
+  OBJECT-PROPERTIES
+  {
+    Date=13/09/17;
+    Time=12:03:46;
+    Modified=Yes;
+    Version List=TA1.0;
+  }
+  PROPERTIES
+  {
+    SourceTable=Table81019;
+    PageType=Card;
+    ActionList=ACTIONS
+    {
+      { 1000000005;  ;ActionContainer;
+                      ActionContainerType=ActionItems }
+      { 1000000006;1 ;Action    ;
+                      Name=Update Template with Filter;
+                      CaptionML=[ENU=Update Template with Filter;
+                                 ENG=Update Template with Filter];
+                      Promoted=Yes;
+                      Image=Add;
+                      PromotedCategory=Process;
+                      OnAction=BEGIN
+                                 MESSAGE(STRSUBSTNO('%1 Records inserted to template %2',AutoPopulateDimensionTemplate(Rec),Code));
+                                 CurrPage.UPDATE;
+                               END;
+                                }
+      { 1000000007;1 ;Action    ;
+                      Name=Delete Template Line Detail;
+                      CaptionML=[ENU=Delete Template Line Detail;
+                                 ENG=Delete Template Line Detail];
+                      Promoted=Yes;
+                      Image=Delete;
+                      PromotedCategory=Process;
+                      OnAction=VAR
+                                 LrecDimTempLine@1000000000 : Record 81020;
+                                 LtxtConst001@1000000001 : TextConst 'ENU=Are you sure you want to delete all %1 detail lines for template code %2';
+                               BEGIN
+                                 LrecDimTempLine.RESET;
+                                 LrecDimTempLine.SETRANGE("Template Code",Code);
+                                 IF CONFIRM(LtxtConst001,FALSE,FORMAT(LrecDimTempLine.COUNT),Code) THEN LrecDimTempLine.DELETEALL(TRUE);
+                               END;
+                                }
+    }
+  }
+  CONTROLS
+  {
+    { 1000000000;0;Container;
+                ContainerType=ContentArea }
+
+    { 1000000001;1;Group  ;
+                Name=General;
+                GroupType=Group }
+
+    { 1000000002;2;Field  ;
+                SourceExpr=Code }
+
+    { 1000000003;2;Field  ;
+                SourceExpr=Description }
+
+    { 1000000008;2;Field  ;
+                SourceExpr="Auto Populate Dimension" }
+
+    { 1000000009;2;Field  ;
+                SourceExpr="Auto Populate Dim Value Filter" }
+
+    { 1000000010;2;Field  ;
+                SourceExpr="Allow Blocked Dimensions" }
+
+    { 1000000004;1;Part   ;
+                CaptionML=ENG=Dimension Template Detail;
+                SubPageLink=Template Code=FIELD(Code);
+                PagePartID=Page81055;
+                PartType=Page }
+
+  }
+  CODE
+  {
+
+    PROCEDURE AutoPopulateDimensionTemplate@1000000003(VAR RrecDimensionTemplate@1000000000 : Record 81019) : Integer;
+    VAR
+      LrecDimValue@1000000001 : Record 349;
+      LrecDimTemplateDetail@1000000002 : Record 81020;
+      LintCount@1000000003 : Integer;
+    BEGIN
+      CLEAR(LintCount);
+      IF RrecDimensionTemplate."Auto Populate Dimension" = '' THEN EXIT;
+
+      LrecDimValue.RESET;
+      LrecDimValue.SETRANGE("Dimension Code",RrecDimensionTemplate."Auto Populate Dimension");
+      IF RrecDimensionTemplate."Auto Populate Dim Value Filter" <> '' THEN LrecDimValue.SETFILTER(Code,RrecDimensionTemplate."Auto Populate Dim Value Filter");
+      IF NOT RrecDimensionTemplate."Allow Blocked Dimensions" THEN LrecDimValue.SETRANGE(Blocked,FALSE);
+      LrecDimValue.SETRANGE("Dimension Value Type",LrecDimValue."Dimension Value Type"::Standard);
+      IF LrecDimValue.FINDFIRST THEN REPEAT
+        LrecDimTemplateDetail.INIT;
+        LrecDimTemplateDetail.VALIDATE("Template Code",RrecDimensionTemplate.Code);
+        LrecDimTemplateDetail.VALIDATE("Dimension Code",LrecDimValue."Dimension Code");
+        LrecDimTemplateDetail.VALIDATE("Dimension Value",LrecDimValue.Code);
+        IF LrecDimTemplateDetail.INSERT(TRUE) THEN LintCount+=1;
+      UNTIL LrecDimValue.NEXT = 0;
+
+      //If blocked and not allow blocked then try and delete
+      IF NOT RrecDimensionTemplate."Allow Blocked Dimensions" THEN BEGIN
+        LrecDimValue.RESET;
+        LrecDimValue.SETRANGE("Dimension Code",RrecDimensionTemplate."Auto Populate Dimension");
+        IF RrecDimensionTemplate."Auto Populate Dim Value Filter" <> '' THEN LrecDimValue.SETFILTER(Code,RrecDimensionTemplate."Auto Populate Dim Value Filter");
+        LrecDimValue.SETRANGE(Blocked,TRUE);
+        LrecDimValue.SETRANGE("Dimension Value Type",LrecDimValue."Dimension Value Type"::Standard);
+        IF LrecDimValue.FINDFIRST THEN REPEAT
+          IF LrecDimTemplateDetail.GET(RrecDimensionTemplate.Code,LrecDimValue."Dimension Code", LrecDimValue.Code) THEN BEGIN
+            IF LrecDimTemplateDetail.DELETE(TRUE) THEN LintCount+=1;
+          END;
+        UNTIL LrecDimValue.NEXT = 0;
+      END;
+
+      EXIT(LintCount);
+    END;
+
+    BEGIN
+    END.
+  }
+}
+
